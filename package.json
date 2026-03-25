@@ -11,27 +11,25 @@
 		},
 		"./package.json": "./package.json"
 	},
-	"scripts": {
-		"build": "tsc -p ./tsconfig.build.json",
-		"test": "node --test",
-		"fmt": "prettier --check --ignore-path .gitignore .",
-		"fmt-fix": "npm run fmt -- --write"
-	},
-	"prettier": "@nerd-bible/config/prettier",
-	"devDependencies": {
-		"@nerd-bible/config": "^0.1.5",
-		"expect": "^30.2.0",
-		"happy-dom": "^20.8.7",
-		"typescript": "^5.9.3"
-	},
 	"files": [
 		"src",
 		"dist",
 		"README.md",
 		"LICENSE.md"
 	],
+	"scripts": {
+		"build": "tsc -p ./tsconfig.build.json",
+		"test": "node --test",
+		"fmt": "prettier --check --ignore-path .gitignore .",
+		"fmt-fix": "npm run fmt -- --write"
+	},
 	"dependencies": {
-		"@nerd-bible/valio": "^0.1.7",
-		"prosemirror-model": "^1.25.4"
-	}
+		"@nerd-bible/valio": "^0.1.8"
+	},
+	"devDependencies": {
+		"@nerd-bible/config": "^0.1.5",
+		"expect": "^30.2.0",
+		"typescript": "^5.9.3"
+	},
+	"prettier": "@nerd-bible/config/prettier"
 }

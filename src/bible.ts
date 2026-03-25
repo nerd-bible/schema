@@ -3,29 +3,41 @@ import * as v from "@nerd-bible/valio";
 export const docId = v
 	.string()
 	.refine((s) => s.split("/").length === 3, "contains 2 '/'");
-export const wordId = v.number().gte(1).lte(Number.MAX_SAFE_INTEGER);
-
-export const doc = v.object({ id: docId });
+export const id = v.number().neq(0);
+export const doc = v
+	.object({
+		id: docId,
+		name: v.string(),
+		published: v.date(),
+		publishedErrorDays: v.number(),
+	})
+	.partial({
+		name: true,
+		published: true,
+		publishedErrorDays: true,
+	});
 
 export const word = v
 	.object({
 		doc: docId,
-		id: wordId,
-		position: v.number(),
+		id,
 
 		form: v.string(),
 		isTetragram: v.boolean(),
 
+		// Technically spans, but these act as blocks very useful to query.
+		isFootnote: v.boolean(),
 		chapter: v.number(),
 		verse: v.number(),
 
+		// Search + concordance
 		stem: v.string(),
 		lemma: v.string(),
 
 		sources: v.array(v.object({ doc: docId, id: v.number() })),
 
-		// For grammarians
-		conllu: v
+		// Conllu grammar
+		grammar: v
 			.object({
 				upos: v.string(),
 				xpos: v.string(),
@@ -44,7 +56,7 @@ export const word = v
 				deps: true,
 				misc: true,
 			}),
-		// Blocks cannot nest
+		// Blocks cannot nest and go BEFORE the word.
 		block: v.union([
 			v.object({
 				tag: v.literal("p"),
@@ -80,15 +92,20 @@ export const word = v
 		verse: true,
 		stem: true,
 		lemma: true,
+		conllu: true,
+		block: true,
 	});
 
 export const wordSpan = v.object({
 	doc: docId,
+	id,
 
 	start: v.number(),
 	end: v.number(),
 
 	value: v.union([
 		v.object({ tag: v.literal("quote"), cite: v.string() }),
+		v.object({ tag: v.literal("em") }),
+		v.object({ tag: v.literal("strong") }),
 	]),
 });
