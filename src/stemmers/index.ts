@@ -1,1 +1,1 @@
-export { default as english } from "./english.ts";
+export { default as eng } from "./english.ts";

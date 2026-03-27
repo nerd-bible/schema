@@ -1,34 +1,30 @@
 import { DatabaseSync } from "node:sqlite";
-import { unlinkSync, writeFileSync } from "node:fs";
-import * as sqlite from "./sqlite.ts";
-import sample from "./bible-sample.ts";
+import { rmSync } from "node:fs";
+import { schemas, ingest, functions } from "./sqlite/index.ts";
+import * as sample from "./bible-sample.ts";
+import * as schema from "./typescript.ts";
 
-unlinkSync("foo.db");
-const db = new DatabaseSync("foo.db", { open: true });
-db.exec(sqlite.document);
-db.exec(sqlite.word);
-db.exec(sqlite.grammar);
-db.exec(sqlite.source);
-db.exec(sqlite.block);
-db.exec(sqlite.span);
+const fname = "sample.db";
+rmSync(fname, { force: true });
+const db = new DatabaseSync(fname, { open: true });
+// Use until have custom sqlite build.
+db.function("stemmer", { deterministic: true }, functions.stemmer);
+db.exec(schemas.document);
+db.exec(schemas.word);
+db.exec(schemas.grammar);
+db.exec(schemas.source);
+db.exec(schemas.block);
+db.exec(schemas.span);
+db.exec("begin;");
 
-db.exec(
-	`insert into document (id, book) values (${sample.document.id}, '${sample.document.book}')`,
-);
-
-// create csvs
-const batchSize = 10_000;
-
-for (let i = 0; i < sample.words.length; i += batchSize) {
-	const batch = sample.words.slice(i, i + batchSize);
-	const values = batch
-		.map(
-			(w) =>
-				`(${[w.doc, w.id, w.before, w.text, w.lang, w.after].map((v) => (typeof v === "string" ? `'${v}'` : v)).join(",")})`,
-		)
-		.join(",");
-	db.exec(`insert into word (doc, id, before, text, lang, after) values ${values}`);
+function insertDocument(doc: schema.All) {
+	ingest.insertRows(db, "document", [doc.document]);
+	ingest.insertRows(db, "word", doc.words);
+	ingest.insertRows(db, "block", doc.blocks);
 }
 
-// sample.blocks
-// 	.map((b) => [b.doc, b.word, b.tag, b.depth, b.attrs].join("\t"))
+insertDocument(sample.gen);
+insertDocument(sample.exo);
+
+db.exec(schemas.indices);
+db.exec("commit;analyze;");

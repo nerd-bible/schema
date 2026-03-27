@@ -9,6 +9,7 @@ export const document = v
 	.object({
 		id: docId,
 		book: v.string(),
+		lang: v.string(),
 		shortcode: v.string(),
 		published: v.date(),
 		publishedErrorDays: v.number(),
@@ -21,14 +22,18 @@ export const document = v
 	});
 export type Document = v.Output<typeof document>;
 
-export const word = v.object({
-	doc: docId,
-	id,
-	before: v.string(), // punctuation
-	text: v.string(),
-	lang: v.string(),
-	after: v.string(), // punctuation
-});
+export const word = v
+	.object({
+		doc: docId,
+		id,
+		before: v.string(), // punctuation
+		text: v.string(),
+		lang: v.string(),
+		after: v.string(), // punctuation
+	})
+	.partial({
+		lang: true,
+	});
 export type Word = v.Output<typeof word>;
 
 export const grammar = v
@@ -51,30 +56,32 @@ export const source = v.object({
 export type Source = v.Output<typeof source>;
 
 // Blocks can nest and go BEFORE the word.
-export const block = v.object({
-	doc: docId,
-	word: id,
-	depth: v.number(), // must match HTML
-	tag: v.enum([
-		"p",
-		"h1",
-		"h2",
-		"h3",
-		"h4",
-		"h5",
-		"h6",
-		"ol",
-		"ul",
-		"li",
-		"hr",
-		"c",
-		"v",
-	]),
-	attrs: v.object({
-		class: v.string(),
-		dir: v.enum(["ltr", "rtl"]),
-	}),
-}).partial({ attrs: true });
+export const block = v
+	.object({
+		doc: docId,
+		word: id,
+		depth: v.number(), // must match HTML
+		tag: v.enum([
+			"p",
+			"h1",
+			"h2",
+			"h3",
+			"h4",
+			"h5",
+			"h6",
+			"ol",
+			"ul",
+			"li",
+			"hr",
+			"c",
+			"v",
+		]),
+		attrs: v.object({
+			class: v.string(),
+			dir: v.enum(["ltr", "rtl"]),
+		}),
+	})
+	.partial({ attrs: true });
 export type Block = v.Output<typeof block>;
 
 export const span = v.object({

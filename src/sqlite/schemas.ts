@@ -1,13 +1,13 @@
-// https://duckdb.org/docs/stable/sql/data_types/overview
 export const document = `CREATE TABLE document (
 	id INTEGER PRIMARY KEY,
 
 	book TEXT, -- Biblical book, paratext id
+	lang TEXT, -- ISO 639 used for segmentation
 	shortcode TEXT, -- publisher defined, like BSB, ESV, etc.
-	code TEXT AS (book || '/' || shortcode),
-
 	published INTEGER, -- unix epoch seconds
-	publishedErrorRangeDays INTEGER
+	publishedErrorRangeDays INTEGER,
+
+	code TEXT AS (book || '/' || lang || '/' || shortcode)
 ) STRICT;`;
 
 export const word = `CREATE TABLE word (
@@ -16,10 +16,10 @@ export const word = `CREATE TABLE word (
 
 	before TEXT, -- punctuation
 	text TEXT,
-	lang TEXT, -- lowercase ISO 639
+	lang TEXT, -- ISO 639
 	after TEXT, -- punctuation
 
-	-- stem AS userStemFn(lang, text)
+	stem TEXT AS (stemmer(lang, text)),
 
 	PRIMARY KEY (doc, id)
 ) STRICT, WITHOUT ROWID;`;
@@ -59,10 +59,9 @@ export const block = `CREATE TABLE block (
 	depth INTEGER NOT NULL,
 	attrs BLOB,
 
-	PRIMARY KEY (doc, word),
+	PRIMARY KEY (doc, word, tag),
 	FOREIGN KEY (doc, word) REFERENCES word(doc, id)
-) STRICT, WITHOUT ROWID;
-CREATE INDEX blockSegment ON block (tag, depth);`
+) STRICT, WITHOUT ROWID;`;
 
 export const span = `CREATE TABLE span (
 	doc INTEGER,
@@ -74,5 +73,8 @@ export const span = `CREATE TABLE span (
 
 	FOREIGN KEY (doc, startWord) REFERENCES word(doc, id),
 	FOREIGN KEY (doc, endWord) REFERENCES word(doc, id)
-) STRICT;
-CREATE INDEX spanStartWord ON span (startWord);`
+) STRICT;`;
+
+export const indices = `CREATE INDEX spanStartWord ON span (startWord);
+CREATE INDEX wordText ON word (text);
+CREATE INDEX wordStem ON word (stem);`;
