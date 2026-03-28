@@ -28,7 +28,7 @@ export const grammar = `CREATE TABLE grammar (
 	doc INTEGER,
 	word INTEGER,
 
-	-- conllu fields
+	-- conllu
 	lemma TEXT,
 	upos TEXT,
 	xpos TEXT,
