@@ -1,79 +1,28 @@
-import * as schema from "./typescript.ts";
+import { Builder } from "./builder.ts";
 
 type Chapter = ({ tag: "h2"; data: string } | { tag: "p" } | string)[];
 
-const segmenter = new Intl.Segmenter("en", { granularity: "word" });
-const isWordSeperator = (text: string) =>
-	text.match(/[\p{Pc}\p{Pd}\p{Z}]+/u) != null;
-
 let docId = 1;
-const lang = "eng";
 
 function sampleDocument(book: string, chapters: Chapter[]) {
-	const doc = {
-		document: { id: docId, lang, book },
-		words: [] as schema.Word[],
-		blocks: [] as schema.Block[],
-	} satisfies schema.All;
-	let wordId = 1;
-	const newWord = (text = ""): schema.Word => ({
-		doc: docId,
-		id: wordId++,
-		lang,
-		before: "",
-		text,
-		after: "",
-	});
-
-	function toBeforeAfter(input: string): schema.Word[] {
-		const words: ReturnType<typeof toBeforeAfter> = [];
-		let next = newWord();
-
-		for (const s of segmenter.segment(input)) {
-			if (isWordSeperator(s.segment)) {
-				if (next.text) {
-					words.push(next);
-					next = newWord();
-				}
-				next.before += s.segment;
-			} else if (s.isWordLike) {
-				next.text += s.segment;
-			} else if (next.text) {
-				next.after += s.segment;
-			} else {
-				next.before += s.segment;
-			}
-		}
-		// flush
-		if (next.text) words.push(next);
-		else {
-			const punctAsWord = next.before || next.after;
-			if (punctAsWord) words.push(newWord(punctAsWord));
-		}
-
-		return words;
-	}
+	const doc = new Builder(docId++, "eng", { book, code: "BSB" });
 
 	for (let c = 0; c < chapters.length; c++) {
-		doc.blocks.push({ doc: docId, word: wordId, tag: "c", depth: c + 1 });
+		doc.pushBlock("c", c + 1);
 
 		let v = 1;
 		for (const obj of chapters[c]) {
 			if (typeof obj === "string") {
-				doc.blocks.push({ doc: docId, word: wordId, tag: "v", depth: v++ });
-				const newWords = toBeforeAfter(obj);
-				doc.words.push(...newWords);
+				doc.pushBlock("v", v++);
+				doc.pushText(obj);
 			} else if (obj.tag === "h2") {
-				doc.blocks.push({ doc: docId, word: wordId, tag: "h2", depth: 1 });
-				const newWords = toBeforeAfter(obj.data);
-				doc.words.push(...newWords);
+				doc.pushBlock("h2", 1, { html: obj.data });
 			} else if (obj.tag === "p") {
-				doc.blocks.push({ doc: docId, word: wordId, tag: "p", depth: 1 });
+				doc.pushBlock("p", 1);
 			}
 		}
 	}
 
-	docId++;
 	return doc;
 }
 
