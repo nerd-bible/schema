@@ -1,4 +1,4 @@
-import { builtin64 } from "../rand.ts";
+import { builtin32 } from "../rand.ts";
 import * as s from "./schema.ts";
 
 const isWordSeperator = (text: string) =>
@@ -40,6 +40,13 @@ export function tokenize(input: string, lang: string): Token[] {
 	return words;
 }
 
+type Side = "left" | "right" | 0 | 1;
+function sideToInt(side: Side) {
+	if (side === "left") return 0;
+	if (side === "right") return 1;
+	return side;
+}
+
 export class Builder {
 	doc: s.Doc;
 	publication?: Omit<s.Publication, "id">;
@@ -48,14 +55,12 @@ export class Builder {
 	grammars: s.Grammar[] = [];
 	sources: s.Source[] = [];
 
-	blocks: s.Block[] = [];
 	spans: s.Span[] = [];
 
-	anchors: s.Anchor[] = [];
-
 	constructor(
-		id: number = builtin64(),
 		lang: string,
+		// TODO: 52 or 64 instead of 32 (likely need bigint)
+		id: number = builtin32(),
 		publication?: Omit<s.Publication, "id">,
 	) {
 		this.doc = { id, lang };
@@ -90,16 +95,6 @@ export class Builder {
 		}
 	}
 
-	pushBlock(tag: s.Block["tag"], depth: number = 1, attrs?: s.Block["attrs"]) {
-		this.blocks.push({
-			doc: this.doc.id,
-			word: this.words.length,
-			tag,
-			depth,
-			attrs,
-		});
-	}
-
 	pushSource(srcDoc: number, srcWord: number) {
 		this.sources.push({
 			doc: this.doc.id,
@@ -109,74 +104,49 @@ export class Builder {
 		});
 	}
 
-	startSpan(value: s.Span["value"]) {
+	startSpan(
+		tag: s.Span["tag"],
+		attrs: s.Span["attrs"] = {},
+		startSide: Side = "left",
+		endSide: Side = "right",
+	) {
 		this.spans.push({
 			doc: this.doc.id,
-			startWord: this.words.length,
-			endWord: -1,
-			value: value,
-		});
-	}
-
-	endSpan(tag: string) {
-		// TODO: some automatic tag closing logic like HTML parsers
-		const last = this.spans.findLast((s) => s.value.tag === tag && !s.endWord);
-		if (last) last.endWord = this.words.length;
-	}
-
-	addAnchor(
-		side: "left" | "right" | 0 | 1,
-		tag: string,
-		note: number,
-		data?: any,
-	) {
-		let sideParsed: 0 | 1 = 1;
-		if (side === "right") sideParsed = 0;
-		else if (side === "left") sideParsed = 1;
-		else sideParsed = side;
-
-		this.anchors.push({
-			id: builtin64(),
-			doc: this.doc.id,
-			word: this.words.length,
-			side: sideParsed,
+			start: this.words.length,
+			startSide: sideToInt(startSide),
+			end: this.words.length,
+			endSide: sideToInt(endSide),
 			tag,
-			note,
-			data,
+			attrs,
 		});
 	}
 
-	mergeAdjacentSpans() {
-		const last: Record<string, s.Span> = {};
-
-		this.spans = this.spans.filter(s => {
-			const key = JSON.stringify(s.value); 
-			const prev = last[key];
-			if (prev && prev.endWord + 1 === s.startWord) {
-				prev.endWord = s.endWord;
-				return false;
-			}
-			last[key] = s;
-			return true;
-		});
+	endSpan(tag: string, endSide?: Side) {
+		const last = this.spans.findLast((s) => s.tag === tag);
+		if (last) {
+			last.end = this.words.length - 1;
+			if (endSide) last.endSide = sideToInt(endSide);
+		}
 	}
 
 	remapIds(useSpace: number) {
-		const min = -Number.MAX_VALUE * useSpace;
-		const inc = (-min / this.words.length) * 2;
+		// TODO: small bigint library to get full 64 bit range instead of 52
+		const min = -Number.MAX_SAFE_INTEGER * useSpace;
+		const inc = Math.floor(-min / this.words.length) * 2;
 
-		for (const w of this.words) w.id = min + inc * w.id;
-		for (const prop of ["grammars", "sources", "blocks", "anchors"] as const) {
-			for (const g of this[prop]) g.word = min + inc * g.word;
-		}
+		const map = (id: number) => min + inc * id;
+
+		for (const w of this.words) w.id = map(w.id);
+		for (const w of this.grammars) w.word = map(w.word);
+		for (const w of this.sources) w.word = map(w.word);
 		for (const s of this.spans) {
-			s.startWord = min + inc * s.startWord;
-			s.endWord = min + inc * s.endWord;
+			s.start = map(s.start);
+			s.end = map(s.end);
 		}
 	}
 
-	finalize(useSpace = 0.8) {
-		this.mergeAdjacentSpans();
+	finalize(useSpace = 0.8): this {
 		this.remapIds(useSpace);
+		return this;
 	}
 }

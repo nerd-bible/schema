@@ -18,28 +18,20 @@ export const publication = v
 export type Publication = v.Output<typeof publication>;
 
 // Document content
-export const word = v
-	.object({
-		doc: id,
-		id,
-		text: v.string(),
-	})
-	.extendPartial({
-		lang: v.string(),
-	});
+const wordId = v.object({ doc: id, id });
+export const voidTag = v.union([wordId.extend({ lang: v.literal("hr") })]);
+export const word = v.union([
+	voidTag,
+	wordId.extend({ text: v.string() }).extendPartial({ lang: v.string() }),
+]);
 export type Word = v.Output<typeof word>;
-export const grammar = v
-	.object({
-		doc: id,
-		word: id,
-	})
-	.extendPartial({
-		lemma: v.string(), // concordance
-		upos: v.string(),
-		xpos: v.string(),
-		feats: v.record(v.string(), v.string()),
-		misc: v.record(v.string(), v.string()),
-	});
+export const grammar = v.object({ doc: id, word: id }).extendPartial({
+	lemma: v.string(), // concordance
+	upos: v.string(),
+	xpos: v.string(),
+	feats: v.record(v.string(), v.string()),
+	misc: v.record(v.string(), v.string()),
+});
 export type Grammar = v.Output<typeof grammar>;
 export const source = v.object({
 	doc: id,
@@ -49,48 +41,41 @@ export const source = v.object({
 });
 export type Source = v.Output<typeof source>;
 
-// Document layout.
-export const block = v
+// Formatting and notes.
+const spanTags = [
+	"p", // paragraph
+	"c", // chapter
+	"v", // verse
+	"h1", // heading
+	"h2",
+	"h3",
+	"h4",
+	"h5",
+	"h6",
+	"h7",
+	"h8",
+	"ol", // ordered list
+	"ul", // unordered list
+	"li", // list item
+	"q", // quote
+	"em", // emphasis (italic)
+	"strong", // strong (bold)
+	"pn", // publisher note
+	"un", // user note
+] as const;
+const side = v.enum([0, 1]);
+export const span = v
 	.object({
 		doc: id,
-		word: id,
-		depth: v.number(),
-		tag: v.enum([
-			"p",
-			"h1",
-			"h2",
-			"h3",
-			"h4",
-			"h5",
-			"h6",
-			"ol",
-			"ul",
-			"li",
-			"hr",
-			"c",
-			"v",
-		]),
+		start: id,
+		startSide: side,
+		end: id, // inclusive
+		endSide: side,
+		tag: v.enum(spanTags),
 	})
 	.extendPartial({
-		attrs: v
-			.object({
-				class: v.string(),
-				dir: v.enum(["ltr", "rtl"]),
-				html: v.string(),
-			})
-			.partial(),
+		attrs: v.object({}).loose<string | number>(),
 	});
-export type Block = v.Output<typeof block>;
-export const span = v.object({
-	doc: id,
-	startWord: v.number(),
-	endWord: v.number(),
-	value: v.union([
-		v.object({ tag: v.literal("q"), cite: v.string() }),
-		v.object({ tag: v.literal("em") }),
-		v.object({ tag: v.literal("strong") }),
-	]),
-});
 export type Span = v.Output<typeof span>;
 
 // Annotations.
@@ -111,19 +96,6 @@ export const highlight = v
 		textDecoration: v.string(),
 	});
 export type Highlight = v.Output<typeof highlight>;
-export const anchor = v
-	.object({
-		id,
-		doc: id,
-		word: id,
-		side: v.enum([0 /** left */, 1 /** right */]),
-		tag: v.string(),
-	})
-	.extendPartial({
-		data: v.any(),
-		note: v.number(),
-	});
-export type Anchor = v.Output<typeof anchor>;
 
 export const wordSearch = v.object({
 	doc: id,

@@ -22,5 +22,3 @@ export const builtin32 = () => crypto.getRandomValues(new Int32Array(1))[0];
 
 export const builtin64 = () =>
 	new Float64Array(crypto.getRandomValues(new Int32Array(2)).buffer)[0];
-
-export const builtin52 = () => Math.trunc(builtin64());
