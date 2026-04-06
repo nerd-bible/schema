@@ -8,3 +8,16 @@ export function stemmer(lang: any, text: any): SQLValue {
 	if (lang === "eng") return stemmers.eng(text);
 	return null;
 }
+
+export function spanContains(
+	start: number,
+	startSide: number,
+	end: number,
+	endSide: number,
+	word: number,
+): SQLValue {
+	const inStart = startSide ? start < word : start <= word;
+	const inEnd = endSide ? end >= word : end > word;
+
+	return inStart && inEnd ? 1 : 0;
+}

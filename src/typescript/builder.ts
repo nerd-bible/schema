@@ -49,7 +49,7 @@ function sideToInt(side: Side) {
 
 export class Builder {
 	doc: s.Doc;
-	publication?: Omit<s.Publication, "id">;
+	publication?: Omit<s.Publication, "doc">;
 
 	words: s.Word[] = [];
 	grammars: s.Grammar[] = [];
@@ -61,7 +61,7 @@ export class Builder {
 		lang: string,
 		// TODO: 52 or 64 instead of 32 (likely need bigint)
 		id: number = builtin32(),
-		publication?: Omit<s.Publication, "id">,
+		publication?: Omit<s.Publication, "doc">,
 	) {
 		this.doc = { id, lang };
 		this.publication = publication;
@@ -106,7 +106,7 @@ export class Builder {
 
 	startSpan(
 		tag: s.Span["tag"],
-		attrs: s.Span["attrs"] = {},
+		data: s.Span["data"] = {},
 		startSide: Side = "left",
 		endSide: Side = "right",
 	) {
@@ -117,7 +117,7 @@ export class Builder {
 			end: this.words.length,
 			endSide: sideToInt(endSide),
 			tag,
-			attrs,
+			data,
 		});
 	}
 

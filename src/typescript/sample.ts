@@ -6,7 +6,7 @@ type Paragraph = { tag: "p" };
 type Chapter = { tag: "c" };
 type Verse = { tag: "v" };
 type Note = { tag: "pn"; children: Inline[] };
-type Span = Pick<SSpan, "tag" | "attrs"> & { children: Inline[] };
+type Span = Pick<SSpan, "tag" | "data"> & { children: Inline[] };
 type Inline = Span | string;
 type Book = (Heading | Paragraph | Chapter | Verse | Note | Inline)[];
 
@@ -28,11 +28,11 @@ function parseTag(doc: Builder, tag: Book[number]) {
 			break;
 		case "c":
 			doc.endSpan("c");
-			doc.startSpan("c", { number: c++ });
+			doc.startSpan("c", c++);
 			break;
 		case "v":
 			doc.endSpan("v");
-			doc.startSpan("v", { number: v++ });
+			doc.startSpan("v", v++);
 			break;
 		case "em":
 		case "strong":
@@ -47,6 +47,8 @@ function parseTag(doc: Builder, tag: Book[number]) {
 
 function sampleDocument(id: string, content: Book) {
 	const doc = new Builder("eng", undefined, { book: id, code: "BSB" });
+	c = 1;
+	v = 1;
 	for (const t of content) parseTag(doc, t);
 	doc.endSpan("v");
 	doc.endSpan("c");

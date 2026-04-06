@@ -4,7 +4,7 @@ export const doc = `CREATE TABLE doc (
 	lang TEXT -- ISO 639 used for sentence and default word segmentation
 ) STRICT, WITHOUT ROWID;`;
 export const publication = `CREATE TABLE publication (
-	id INTEGER PRIMARY KEY REFERENCES doc(id),
+	doc INTEGER PRIMARY KEY REFERENCES doc(id),
 
 	book TEXT NOT NULL, -- Biblical book, paratext id
 	code TEXT NOT NULL, -- publisher defined, like BSB, ESV, etc.
@@ -34,8 +34,8 @@ export const grammar = `CREATE TABLE grammar (
 	lemma TEXT,
 	upos TEXT,
 	xpos TEXT,
-	feats BLOB,
-	misc BLOB,
+	feats BLOB CHECK (json_valid(feats)),
+	misc BLOB CHECK (json_valid(misc)),
 
 	PRIMARY KEY (doc, word),
 	FOREIGN KEY (doc, word) REFERENCES word(doc, id)
@@ -61,7 +61,7 @@ export const span = `CREATE TABLE span (
 	endSide INTEGER, -- 0 = left, 1 = right
 
 	tag TEXT,
-	attrs BLOB,
+	data ANY,
 
 	FOREIGN KEY (doc, start) REFERENCES word(doc, id),
 	FOREIGN KEY (doc, end) REFERENCES word(doc, id)
@@ -104,7 +104,7 @@ export const wordSearch = `CREATE TABLE wordSearch (
 	FOREIGN KEY (doc, word) REFERENCES word(doc, id),
 	FOREIGN KEY (doc, wordEnd) REFERENCES word(doc, id)
 ) STRICT, WITHOUT ROWID;`;
-export const wordSearchInvalidation = `CREATE TABLE wordSearchInvalid (
+export const wordSearchInvalid = `CREATE TABLE wordSearchInvalid (
 	doc INTEGER PRIMARY KEY REFERENCES doc(id)
 ) STRICT;`;
 export const triggers = `
@@ -128,9 +128,17 @@ BEGIN
 	INSERT INTO wordSearchInvalid (doc) VALUES (new.doc) ON CONFLICT DO NOTHING;
 END;
 `;
-export const indices = [
-	"CREATE INDEX spanStart ON span (start);",
-	"CREATE INDEX spanEnd ON span (end);",
-	"CREATE INDEX wordSearchPos ON wordSearch (plane, pos);",
-	"CREATE INDEX wordSearchStem ON wordSearch (plane, stem);",
-];
+export const indices = `
+CREATE INDEX spanStart ON span (start);
+CREATE INDEX spanEnd ON span (end);
+CREATE INDEX wordSearchPos ON wordSearch (plane, pos);
+CREATE INDEX wordSearchStem ON wordSearch (plane, stem);
+`;
+export const views = `
+CREATE VIEW bcv AS
+SELECT p.book as b, c.data as c, v.data as v, p.doc as doc, w.id, w.text
+FROM word w
+JOIN span c ON c.tag = 'c' AND c.doc = w.doc AND spanContains(c.start, c.startSide, c.end, c.endSide, w.id)
+JOIN span v ON v.tag = 'v' AND v.doc = w.doc AND spanContains(v.start, v.startSide, v.end, v.endSide, w.id)
+JOIN publication p ON p.doc = w.doc;
+`;

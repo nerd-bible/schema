@@ -7,7 +7,7 @@ export const doc = v.object({ id, lang: v.string() });
 export type Doc = v.Output<typeof doc>;
 export const publication = v
 	.object({
-		id,
+		doc: id,
 		book: v.string(),
 		code: v.string(),
 	})
@@ -73,9 +73,7 @@ export const span = v
 		endSide: side,
 		tag: v.enum(spanTags),
 	})
-	.extendPartial({
-		attrs: v.object({}).loose<string | number>(),
-	});
+	.extendPartial({ data: v.any() });
 export type Span = v.Output<typeof span>;
 
 // Annotations.

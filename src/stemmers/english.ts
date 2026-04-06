@@ -61,15 +61,7 @@ const suffixes = {
 const step4 =
 	/^(.+?)(al|ance|ence|er|ic|able|ible|ant|ement|ment|ent|ou|ism|ate|iti|ous|ive|ize)$/;
 
-const stopWords = new Set([
-	"a",
-	"an",
-	"and",
-	"the",
-	"of",
-	"at",
-	"in",
-]);
+const stopWords = new Set(["a", "an", "and", "the", "of", "at", "in"]);
 
 export default function english(value: string): string | null {
 	let result = value.toLowerCase().replace(/\p{P}|\p{Z}/gv, "");

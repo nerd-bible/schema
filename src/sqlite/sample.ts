@@ -4,37 +4,50 @@ import type { Builder } from "../typescript/builder.ts";
 import * as sample from "../typescript/sample.ts";
 import { functions, ingest, schema } from "./index.ts";
 
-const fname = "sample.db";
-rmSync(fname, { force: true });
-const db = new DatabaseSync(fname, { open: true });
-db.function("stemmer", { deterministic: true }, functions.stemmer);
-db.exec(schema.doc);
-db.exec(schema.publication);
-db.exec(schema.word);
-db.exec(schema.grammar);
-db.exec(schema.source);
-db.exec(schema.span);
-
-db.exec(schema.wordSearch);
-db.exec(schema.wordSearchInvalidation);
-db.exec(schema.triggers);
-db.exec("begin;");
-
-function insertDocument(doc: Builder) {
-	ingest.insertRows(db, "doc", [doc.doc]);
-	if (doc.publication) ingest.insertRows(db, "publication", [{
-		id: doc.doc.id,
-		...doc.publication
-	}]);
-	ingest.insertRows(db, "word", doc.words);
-	ingest.insertRows(db, "grammar", doc.grammars);
-	ingest.insertRows(db, "source", doc.sources);
-	ingest.insertRows(db, "span", doc.spans);
+export function openDb(rmExisting = false): DatabaseSync {
+	const fname = "sample.db";
+	if (rmExisting) rmSync(fname, { force: true });
+	const db = new DatabaseSync(fname, { open: true });
+	db.function("stemmer", { deterministic: true }, functions.stemmer);
+	db.function("spanContains", { deterministic: true }, functions.spanContains);
+	return db;
 }
 
-insertDocument(sample.gen);
-insertDocument(sample.exo);
+if (import.meta.main) {
+	const db = openDb(true);
+	db.exec(schema.doc);
+	db.exec(schema.publication);
+	db.exec(schema.word);
+	db.exec(schema.grammar);
+	db.exec(schema.source);
+	db.exec(schema.span);
 
-schema.indices.forEach(i => db.exec(i));
-db.exec("commit;analyze;");
-// db.exec("update word set id=180 where doc=2 and id=172");
+	db.exec(schema.wordSearch);
+	db.exec(schema.wordSearchInvalid);
+	db.exec(schema.triggers);
+	db.exec(schema.views);
+	db.exec("begin;");
+
+	function insertDocument(doc: Builder) {
+		ingest.insertRows(db, "doc", [doc.doc]);
+		if (doc.publication)
+			ingest.insertRows(db, "publication", [
+				{
+					doc: doc.doc.id,
+					...doc.publication,
+				},
+			]);
+		ingest.insertRows(db, "word", doc.words);
+		ingest.insertRows(db, "grammar", doc.grammars);
+		ingest.insertRows(db, "source", doc.sources);
+		ingest.insertRows(db, "span", doc.spans);
+	}
+
+	insertDocument(sample.gen);
+	insertDocument(sample.exo);
+
+	db.exec(schema.indices);
+	db.exec("commit;analyze;");
+	// Test triggers
+	// db.exec("update word set id=180 where doc=2 and id=172");
+}
