@@ -19,7 +19,10 @@ export type Publication = v.Output<typeof publication>;
 
 // Document content
 const wordId = v.object({ doc: id, id });
-export const voidTag = v.union([wordId.extend({ lang: v.literal("hr") })]);
+export const voidTag = v.union([
+	wordId.extend({ lang: v.literal("hr") }),
+	wordId.extend({ lang: v.enum(["c", "v"]), text: v.string() }),
+]);
 export const word = v.union([
 	voidTag,
 	wordId.extend({ text: v.string() }).extendPartial({ lang: v.string() }),

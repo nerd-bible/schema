@@ -1,3 +1,6 @@
+// TODO: canon and book groups: https://en.wikipedia.org/wiki/Biblical_canon
+// https://ubsicap.github.io/usfm/identification/books.html
+// TODO: add check to `publication.book`
 // Publication or note.
 export const doc = `CREATE TABLE doc (
 	id INTEGER PRIMARY KEY,
@@ -129,16 +132,11 @@ BEGIN
 END;
 `;
 export const indices = `
-CREATE INDEX spanStart ON span (start);
-CREATE INDEX spanEnd ON span (end);
-CREATE INDEX wordSearchPos ON wordSearch (plane, pos);
-CREATE INDEX wordSearchStem ON wordSearch (plane, stem);
+CREATE INDEX spanStart ON span(start);
+CREATE INDEX spanEnd ON span(end);
+CREATE INDEX wordLangText ON word(lang, text);
+CREATE INDEX wordSearchPos ON wordSearch(plane, pos);
+CREATE INDEX wordSearchStem ON wordSearch(plane, stem);
+CREATE INDEX docTagTag ON docTag(tag);
 `;
-export const views = `
-CREATE VIEW bcv AS
-SELECT p.book as b, c.data as c, v.data as v, p.doc as doc, w.id, w.text
-FROM word w
-JOIN span c ON c.tag = 'c' AND c.doc = w.doc AND spanContains(c.start, c.startSide, c.end, c.endSide, w.id)
-JOIN span v ON v.tag = 'v' AND v.doc = w.doc AND spanContains(v.start, v.startSide, v.end, v.endSide, w.id)
-JOIN publication p ON p.doc = w.doc;
-`;
+export const views = ``;
