@@ -24,13 +24,10 @@
 		"fmt-fix": "npm run fmt -- --write"
 	},
 	"dependencies": {
-		"@nerd-bible/valio": "^0.1.11"
+		"@nerd-bible/valio": "^0.1.18"
 	},
 	"devDependencies": {
-		"@nerd-bible/config": "^0.1.7",
-		"@types/node": "^25.5.2",
-		"expect": "^30.3.0",
-		"typescript": "^6.0.2"
+		"@nerd-bible/config": "^0.1.9"
 	},
 	"prettier": "@nerd-bible/config/prettier"
 }

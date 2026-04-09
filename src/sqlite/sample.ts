@@ -1,8 +1,7 @@
 import { rmSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import type { Builder } from "../typescript/builder.ts";
 import * as sample from "../typescript/sample.ts";
-import { functions, ingest, schema } from "./index.ts";
+import { functions, ingest } from "./index.ts";
 
 export function openDb(rmExisting = false): DatabaseSync {
 	const fname = "sample.db";
@@ -15,38 +14,11 @@ export function openDb(rmExisting = false): DatabaseSync {
 
 if (import.meta.main) {
 	const db = openDb(true);
-	db.exec(schema.doc);
-	db.exec(schema.publication);
-	db.exec(schema.word);
-	db.exec(schema.grammar);
-	db.exec(schema.source);
-	db.exec(schema.span);
 
-	db.exec(schema.wordSearch);
-	db.exec(schema.wordSearchInvalid);
-	db.exec(schema.triggers);
-	db.exec(schema.views);
+	ingest.schema(db);
 	db.exec("begin;");
-
-	function insertDocument(doc: Builder) {
-		ingest.insertRows(db, "doc", [doc.doc]);
-		if (doc.publication)
-			ingest.insertRows(db, "publication", [
-				{
-					doc: doc.doc.id,
-					...doc.publication,
-				},
-			]);
-		ingest.insertRows(db, "word", doc.words);
-		ingest.insertRows(db, "grammar", doc.grammars);
-		ingest.insertRows(db, "source", doc.sources);
-		ingest.insertRows(db, "span", doc.spans);
-	}
-
-	insertDocument(sample.gen);
-	insertDocument(sample.exo);
-
-	db.exec(schema.indices);
+	ingest.documents(db, sample.gen);
+	ingest.documents(db, sample.exo);
 	db.exec("commit;analyze;");
 	// Test triggers
 	// db.exec("update word set id=180 where doc=2 and id=172");

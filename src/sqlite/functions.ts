@@ -10,11 +10,11 @@ export function stemmer(lang: any, text: any): SQLValue {
 }
 
 export function spanContains(
-	start: number,
-	startSide: number,
-	end: number,
-	endSide: number,
-	word: number,
+	start: any,
+	startSide: any,
+	end: any,
+	endSide: any,
+	word: any,
 ): SQLValue {
 	const inStart = startSide ? start < word : start <= word;
 	const inEnd = endSide ? end >= word : end > word;

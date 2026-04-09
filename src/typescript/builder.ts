@@ -1,5 +1,5 @@
 import { builtin32 } from "../rand.ts";
-import * as s from "./schema.ts";
+import * as t from "./tables.ts";
 
 const isWordSeperator = (text: string) =>
 	text.match(/[\p{Pc}\p{Pd}\p{Z}]+/u) != null;
@@ -34,40 +34,38 @@ export function tokenize(input: string, lang: string): Token[] {
 	if (next.text) words.push(next);
 	else {
 		const punctAsWord = next.before || next.after;
-		if (punctAsWord) words.push({ before: "", text: punctAsWord, after: "" });
+		if (next.before && !next.after && words.length)
+			words[words.length - 1].after = next.before;
+		else if (punctAsWord)
+			words.push({ before: "", text: punctAsWord, after: "" });
 	}
 
 	return words;
 }
 
-type Side = "left" | "right" | 0 | 1;
-function sideToInt(side: Side) {
-	if (side === "left") return 0;
-	if (side === "right") return 1;
-	return side;
-}
-
 export class Builder {
-	doc: s.Doc;
-	publication?: Omit<s.Publication, "doc">;
+	doc: t.Doc;
+	publication?: Omit<t.Publication, "doc">;
 
-	words: s.Word[] = [];
-	grammars: s.Grammar[] = [];
-	sources: s.Source[] = [];
+	words: t.Word[] = [];
+	grammars: t.Grammar[] = [];
 
-	spans: s.Span[] = [];
+	marks: (t.Mark & {
+		startSide?: "before" | "after";
+		endSide?: "before" | "after";
+	})[] = [];
 
 	constructor(
 		lang: string,
 		// TODO: 52 or 64 instead of 32 (likely need bigint)
 		id: number = builtin32(),
-		publication?: Omit<s.Publication, "doc">,
+		publication?: Omit<t.Publication, "doc">,
 	) {
 		this.doc = { id, lang };
 		this.publication = publication;
 	}
 
-	pushWord(text: string, lang = this.doc.lang): number {
+	pushWord(text?: string, lang = this.doc.lang): number {
 		const id = this.words.length;
 
 		this.words.push({
@@ -83,70 +81,110 @@ export class Builder {
 	pushText(
 		text: string,
 		lang = this.doc.lang,
-		grammar: (t: Token) => Omit<s.Grammar, "doc" | "word"> | undefined = noop,
-		source: (t: Token) => Omit<s.Source, "doc" | "word"> | undefined = noop,
+		grammar: (t: Token) => Omit<t.Grammar, "doc" | "word"> | undefined = noop,
 	) {
 		for (const t of tokenize(text, this.doc.lang)) {
 			const id = this.pushWord(t.before + t.text + t.after, lang);
 			const g = grammar(t);
 			if (g) this.grammars.push({ doc: this.doc.id, word: id, ...g });
-			const s = source(t);
-			if (s) this.sources.push({ doc: this.doc.id, word: id, ...s });
 		}
 	}
 
-	pushSource(srcDoc: number, srcWord: number) {
-		this.sources.push({
-			doc: this.doc.id,
-			word: this.words.length,
-			srcDoc,
-			srcWord,
-		});
-	}
-
-	startSpan(
-		tag: s.Span["tag"],
-		data: s.Span["data"] = {},
-		startSide: Side = "left",
-		endSide: Side = "right",
-	) {
-		this.spans.push({
+	startMark(tag: t.Mark["tag"], data: t.Mark["data"] = {}) {
+		this.marks.push({
 			doc: this.doc.id,
 			start: this.words.length,
-			startSide: sideToInt(startSide),
+			startSide: "before",
 			end: this.words.length,
-			endSide: sideToInt(endSide),
+			endSide: "after",
 			tag,
 			data,
 		});
 	}
 
-	endSpan(tag: string, endSide?: Side) {
-		const last = this.spans.findLast((s) => s.tag === tag);
-		if (last) {
-			last.end = this.words.length - 1;
-			if (endSide) last.endSide = sideToInt(endSide);
-		}
+	endMark(tag: string) {
+		const last = this.marks.findLast((s) => s.tag === tag);
+		if (last) last.end = this.words.length - 1;
 	}
 
-	remapIds(useSpace: number) {
+	remapIds(loadFactor: number) {
 		// TODO: small bigint library to get full 64 bit range instead of 52
-		const min = -Number.MAX_SAFE_INTEGER * useSpace;
+		const min = -Number.MAX_SAFE_INTEGER * loadFactor;
 		const inc = Math.floor(-min / this.words.length) * 2;
 
 		const map = (id: number) => min + inc * id;
 
 		for (const w of this.words) w.id = map(w.id);
 		for (const w of this.grammars) w.word = map(w.word);
-		for (const w of this.sources) w.word = map(w.word);
-		for (const s of this.spans) {
+		for (const s of this.marks) {
 			s.start = map(s.start);
-			s.end = map(s.end);
+			if (s.startSide === "before") s.start -= 1;
+			else s.start += 1;
+			if (s.end) {
+				s.end = map(s.end);
+				if (s.endSide === "before") s.start -= 1;
+				else s.start += 1;
+			}
+
+			delete s.startSide;
+			delete s.endSide;
 		}
 	}
 
-	finalize(useSpace = 0.8): this {
-		this.remapIds(useSpace);
+	finalize(loadFactor = 0.8): this {
+		this.remapIds(loadFactor);
+		return this;
+	}
+}
+
+// Doc and subdocuments
+export class MultiBuilder {
+	builders: Builder[] = [];
+	active: Builder;
+
+	constructor(
+		lang: string,
+		id: number = builtin32(),
+		publication?: Omit<t.Publication, "doc">,
+	) {
+		this.active = new Builder(lang, id, publication);
+		this.builders.push(this.active);
+	}
+
+	fork(code?: string) {
+		const og = this.builders[0];
+		const pub = og.publication ? { ...og.publication } : undefined;
+		if (pub?.code) pub.code += code;
+		this.active = new Builder(og.doc.lang, builtin32(), pub);
+		this.builders.push(this.active);
+	}
+
+	pushWord(text?: string, lang = this.active.doc.lang): number {
+		return this.active.pushWord(text, lang);
+	}
+
+	pushText(
+		text: string,
+		lang = this.active.doc.lang,
+		grammar: (t: Token) => Omit<t.Grammar, "doc" | "word"> | undefined = noop,
+	) {
+		return this.active.pushText(text, lang, grammar);
+	}
+
+	startMark(tag: t.Mark["tag"], data: t.Mark["data"] = {}) {
+		return this.active.startMark(tag, data);
+	}
+
+	endMark(tag: string) {
+		return this.active.endMark(tag);
+	}
+
+	remapIds(loadFactor: number) {
+		for (const b of this.builders) b.remapIds(loadFactor);
+	}
+
+	finalize(loadFactor = 0.8): this {
+		this.remapIds(loadFactor);
 		return this;
 	}
 }

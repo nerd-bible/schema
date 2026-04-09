@@ -1,3 +1,7 @@
+import type { Builder, MultiBuilder } from "../typescript/builder.ts";
+import * as t from "../typescript/tables.ts";
+import { createTableToSqlite } from "./valioToSchema.ts";
+
 export type Serializable = string | number | object;
 export const serialize = {
 	value(v: Serializable): string {
@@ -23,11 +27,19 @@ export const serialize = {
 export type Db = {
 	exec(query: string): void;
 };
-export function insertRows(
+
+export function schema(db: Db) {
+	for (const k in t) {
+		const sql = createTableToSqlite(k, t[k as keyof typeof t]);
+		db.exec(sql);
+	}
+}
+
+export function rows(
 	db: Db,
 	table: string,
 	rows?: Record<string, Serializable>[],
-	batchSize = 10_000,
+	batchSize = 1,
 ) {
 	if (!rows) return;
 
@@ -43,4 +55,22 @@ export function insertRows(
 			throw err;
 		}
 	}
+}
+
+export function document(db: Db, doc: Builder) {
+	rows(db, "doc", [doc.doc]);
+	if (doc.publication)
+		rows(db, "publication", [
+			{
+				doc: doc.doc.id,
+				...doc.publication,
+			},
+		]);
+	rows(db, "word", doc.words);
+	rows(db, "grammar", doc.grammars);
+	rows(db, "mark", doc.marks);
+}
+
+export function documents(db: Db, doc: MultiBuilder) {
+	for (const b of doc.builders) document(db, b);
 }

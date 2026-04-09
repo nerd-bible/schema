@@ -1,6 +1,6 @@
-import { Builder } from "./builder.ts";
+import { MultiBuilder } from "./builder.ts";
 
-type Heading = { tag: "h2" };
+type Heading = { tag: "h2", text: string };
 type Paragraph = { tag: "p" };
 type Chapter = { tag: "c"; n: number };
 type Verse = { tag: "v"; n: number };
@@ -9,59 +9,57 @@ type Span = { tag: "em" | "strong" | "q"; children: Inline[] };
 type Inline = Span | string;
 type Book = (Heading | Paragraph | Chapter | Verse | Note | Inline)[];
 
-function parseTag(doc: Builder, tag: Book[number]) {
+function parseTag(doc: MultiBuilder, tag: Book[number]) {
 	if (typeof tag === "string") {
 		doc.pushText(tag);
 		return;
 	}
 	switch (tag.tag) {
 		case "h2":
-			doc.endSpan("p");
-			doc.endSpan("h2");
-			doc.startSpan("h2");
+			doc.startMark("h", { level: 2, text: tag.text });
 			break;
 		case "p":
-			doc.endSpan("p");
-			doc.endSpan("h2");
-			doc.startSpan("p");
+			doc.startMark("p");
 			break;
 		case "c":
-			doc.pushWord(tag.n.toString(), "c");
+			doc.startMark("c", tag.n);
 			break;
 		case "v":
-			doc.pushWord(tag.n.toString(), "v");
+			doc.startMark("v", tag.n);
 			break;
 		case "em":
 		case "strong":
 		case "q":
-		case "pn":
-			doc.startSpan(tag.tag);
+			doc.startMark(tag.tag);
 			for (const t of tag.children) parseTag(doc, t);
-			doc.endSpan(tag.tag);
+			doc.endMark(tag.tag);
+			break;
+		case "pn":
+			doc.startMark(tag.tag);
+			doc.fork("_NOTE");
+			for (const t of tag.children) parseTag(doc, t);
+			doc.active = doc.builders[0];
 			break;
 	}
 }
 
 function sampleDocument(id: string, content: Book) {
-	const doc = new Builder("eng", undefined, { book: id, code: "BSB" });
+	const doc = new MultiBuilder("eng", undefined, { book: id, code: "BSB" });
 	for (const t of content) parseTag(doc, t);
-	doc.finalize();
-	return doc;
+	return doc.finalize();
 }
 
 // TODO: usfm
 export const gen = sampleDocument("gen", [
 	{ tag: "c", n: 1 },
-	{ tag: "h2" },
-	"The Creation",
+	{ tag: "h2", text: "The Creation" },
 	{ tag: "p" },
 	{ tag: "v", n: 1 },
 	"In the beginning God created the heavens and the earth.",
 	{ tag: "p" },
 	{ tag: "v", n: 2 },
 	" Now the earth was formless and void, and darkness was over the surface of the deep. And the Spirit of God was hovering over the surface of the waters.",
-	{ tag: "h2" },
-	"The First Day",
+	{ tag: "h2", text: "The First Day" },
 	{ tag: "p" },
 	{ tag: "v", n: 3 },
 	" And God said, “Let there be light,”",
@@ -76,8 +74,7 @@ export const gen = sampleDocument("gen", [
 		children: ["Literally ", { tag: "em", children: ["day one"] }],
 	},
 	{ tag: "c", n: 2 },
-	{ tag: "h2" },
-	"The Seventh Day",
+	{ tag: "h2", text: "The Seventh Day" },
 	{ tag: "p" },
 	{ tag: "v", n: 1 },
 	" Thus the heavens and the earth were completed in all their vast array.",
@@ -89,8 +86,7 @@ export const gen = sampleDocument("gen", [
 ]);
 export const exo = sampleDocument("exo", [
 	{ tag: "c", n: 1 },
-	{ tag: "h2" },
-	"The Israelites Multiply in Egypt",
+	{ tag: "h2", text: "The Israelites Multiply in Egypt" },
 	{ tag: "p" },
 	{ tag: "v", n: 1 },
 	"These are the names of the sons of Israel who went to Egypt with Jacob, each with his family:",
@@ -115,8 +111,7 @@ export const exo = sampleDocument("exo", [
 	" Now Joseph and all his brothers and all that generation died,",
 	{ tag: "v", n: 7 },
 	" but the Israelites were fruitful and increased rapidly; they multiplied and became exceedingly numerous, so that the land was filled with them.",
-	{ tag: "h2" },
-	"Oppression by a New King",
+	{ tag: "h2", text: "Oppression by a New King" },
 	{ tag: "p" },
 	{ tag: "v", n: 8 },
 	" Then a new king, who did not know Joseph, came to power in Egypt.",
@@ -129,8 +124,7 @@ export const exo = sampleDocument("exo", [
 		children: ["Or ", { tag: "em", children: ["and take the country"] }],
 	},
 	{ tag: "c", n: 2 },
-	{ tag: "h2" },
-	"The Birth and Adoption of Moses",
+	{ tag: "h2", text: "The Birth and Adoption of Moses" },
 	{ tag: "p" },
 	{ tag: "v", n: 1 },
 	" Now a man of the house of Levi married a Levite woman,",
