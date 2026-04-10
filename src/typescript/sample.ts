@@ -1,6 +1,6 @@
 import { MultiBuilder } from "./builder.ts";
 
-type Heading = { tag: "h2", text: string };
+type Heading = { tag: "h2"; text: string };
 type Paragraph = { tag: "p" };
 type Chapter = { tag: "c"; n: number };
 type Verse = { tag: "v"; n: number };
@@ -44,7 +44,11 @@ function parseTag(doc: MultiBuilder, tag: Book[number]) {
 }
 
 function sampleDocument(id: string, content: Book) {
-	const doc = new MultiBuilder("eng", undefined, { book: id, code: "BSB" });
+	const doc = new MultiBuilder("eng", undefined, {
+		book: id,
+		code: "BSB",
+		published: new Date("2025-12-23"),
+	});
 	for (const t of content) parseTag(doc, t);
 	return doc.finalize();
 }

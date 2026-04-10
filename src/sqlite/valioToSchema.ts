@@ -1,4 +1,5 @@
 import * as v from "@nerd-bible/valio";
+import { ValioBigInt } from "../typescript/valio.ts";
 
 function valioToSqlite(obj: v.Pipe, nullable = false) {
 	const extra = nullable ? "" : " NOT NULL";
@@ -24,7 +25,8 @@ function valioToSqlite(obj: v.Pipe, nullable = false) {
 	if (
 		obj instanceof v.ValioNumber ||
 		obj instanceof v.ValioDate ||
-		obj instanceof v.ValioBoolean
+		obj instanceof v.ValioBoolean ||
+		obj instanceof ValioBigInt
 	)
 		return "INTEGER" + extra;
 	if (

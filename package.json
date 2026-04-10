@@ -24,7 +24,8 @@
 		"fmt-fix": "npm run fmt -- --write"
 	},
 	"dependencies": {
-		"@nerd-bible/valio": "^0.1.18"
+		"@nerd-bible/valio": "^0.1.18",
+		"jsbi": "^4.3.2"
 	},
 	"devDependencies": {
 		"@nerd-bible/config": "^0.1.9"

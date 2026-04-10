@@ -1,3 +1,4 @@
+import JSBI from "jsbi";
 // export function toFloat64(low: number, high: number) {
 //   const memory = new ArrayBuffer(8);
 //   const arr = new Float32Array(memory);
@@ -19,6 +20,14 @@
 // }
 
 export const builtin32 = () => crypto.getRandomValues(new Int32Array(1))[0];
-
 export const builtin64 = () =>
 	new Float64Array(crypto.getRandomValues(new Int32Array(2)).buffer)[0];
+
+export const builtin63 = () => {
+	const buffer = crypto.getRandomValues(new Int32Array(2)).buffer;
+	let res = JSBI.DataViewGetBigInt64(new DataView(buffer), 0);
+	// shift instead of AND to preserve sign
+	res = JSBI.signedRightShift(res, JSBI.BigInt(1));
+	res = JSBI.leftShift(res, JSBI.BigInt(1));
+	return res;
+};

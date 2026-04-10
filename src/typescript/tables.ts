@@ -1,7 +1,8 @@
 import * as v from "@nerd-bible/valio";
+import { bigint } from "./valio.ts";
 
 const lang = v.string(); // ISO-639
-const id = v.number().register("col", "PRIMARY KEY");
+const id = bigint().register("col", "PRIMARY KEY");
 
 // TODO: canon and book groups: https://en.wikipedia.org/wiki/Biblical_canon
 
@@ -14,7 +15,7 @@ export type Doc = v.Output<typeof doc>;
 
 export const publication = v
 	.object({
-		doc: v.number().register("col", "PRIMARY KEY REFERENCES doc(id)"),
+		doc: bigint().register("col", "PRIMARY KEY REFERENCES doc(id)"),
 		// TODO: add check?
 		book: v.string(), // https://ubsicap.github.io/usfm/identification/books.html
 		code: v.string(), // publisher defined, like BSB, ESV, etc.
@@ -28,10 +29,10 @@ export type Publication = v.Output<typeof publication>;
 // Document content
 // collision chance for 100k ids:
 // 32 bit = .69
-// 53 bit = 5.5e-7
-// 64 bit = 2.7e-10
+// 53 bit = 5.5e-7 <- Max safe integer, requires JS bigint to generate
+// 64 bit = 2.7e-10 <- Requires JS bigint to generate and read
 // https://kevingal.com/apps/collision.html
-const docId = v.number().register("col", "REFERENCES doc(id)");
+const docId = bigint().register("col", "REFERENCES doc(id)");
 // const voidWord = v.union([
 // 	v.object({ lang: v.literal("hr") }),
 // 	v.object({ lang: v.enum(["c", "v"]), text: v.string() }),
@@ -42,7 +43,7 @@ const docId = v.number().register("col", "REFERENCES doc(id)");
 export const word = v
 	.object({
 		doc: docId,
-		id: v.number(),
+		id: bigint(),
 	})
 	// really is voidWord | normWord, but no great way to map to SQLite
 	.extendPartial({
@@ -56,7 +57,7 @@ export type Word = v.Output<typeof word>;
 export const grammar = v
 	.object({
 		doc: docId,
-		word: v.number(),
+		word: bigint(),
 	})
 	.extendPartial({
 		// conllu fields
@@ -78,8 +79,8 @@ export type Grammar = v.Output<typeof grammar>;
 // Formatting and notes.
 export const mark = v
 	.object({
-		doc: v.number().register("col", "REFERENCES doc(id)"),
-		start: v.number(), // inclusive
+		doc: bigint().register("col", "REFERENCES doc(id)"),
+		start: bigint(), // inclusive
 
 		tag: v.enum([
 			"p", // paragraph
@@ -98,7 +99,7 @@ export const mark = v
 	})
 	.extendPartial({
 		data: v.any(),
-		end: v.number(), // inclusive
+		end: bigint(), // inclusive
 	})
 	.register(
 		"extra",
@@ -137,11 +138,11 @@ export type Highlight = v.Output<typeof highlight>;
 export const wordSearch = v
 	.object({
 		doc: docId,
-		word: v.number(),
-		wordEnd: v.number(), // in case of N->1 mapping (i.e. one hundred ten -> 110)
+		word: bigint(),
+		wordEnd: bigint(), // in case of N->1 mapping (i.e. one hundred ten -> 110)
 
 		plane: v.number(),
-		pos: v.number(),
+		pos: bigint(),
 		stem: v.string(),
 	})
 	.register(

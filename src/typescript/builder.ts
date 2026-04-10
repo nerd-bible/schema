@@ -1,5 +1,6 @@
-import { builtin32 } from "../rand.ts";
+import { builtin63 } from "../rand.ts";
 import * as t from "./tables.ts";
+import JSBI from "jsbi";
 
 const isWordSeperator = (text: string) =>
 	text.match(/[\p{Pc}\p{Pd}\p{Z}]+/u) != null;
@@ -57,16 +58,15 @@ export class Builder {
 
 	constructor(
 		lang: string,
-		// TODO: 52 or 64 instead of 32 (likely need bigint)
-		id: number = builtin32(),
+		id = builtin63(),
 		publication?: Omit<t.Publication, "doc">,
 	) {
 		this.doc = { id, lang };
 		this.publication = publication;
 	}
 
-	pushWord(text?: string, lang = this.doc.lang): number {
-		const id = this.words.length;
+	pushWord(text?: string, lang = this.doc.lang) {
+		const id = JSBI.BigInt(this.words.length);
 
 		this.words.push({
 			doc: this.doc.id,
@@ -93,9 +93,9 @@ export class Builder {
 	startMark(tag: t.Mark["tag"], data: t.Mark["data"] = {}) {
 		this.marks.push({
 			doc: this.doc.id,
-			start: this.words.length,
+			start: JSBI.BigInt(this.words.length),
 			startSide: "before",
-			end: this.words.length,
+			end: JSBI.BigInt(this.words.length),
 			endSide: "after",
 			tag,
 			data,
@@ -104,26 +104,28 @@ export class Builder {
 
 	endMark(tag: string) {
 		const last = this.marks.findLast((s) => s.tag === tag);
-		if (last) last.end = this.words.length - 1;
+		if (last) last.end = JSBI.BigInt(this.words.length - 1);
 	}
 
 	remapIds(loadFactor: number) {
-		// TODO: small bigint library to get full 64 bit range instead of 52
-		const min = -Number.MAX_SAFE_INTEGER * loadFactor;
-		const inc = Math.floor(-min / this.words.length) * 2;
+		const approxMaxInt = JSBI.toNumber(JSBI.BigInt("0xFFFFFFFF"));
+		const approxMin = Math.floor(approxMaxInt * -loadFactor);
+		const approxInc = Math.floor(approxMin / -this.words.length * 2);
+		const inc = JSBI.BigInt(approxInc);
+		const min = JSBI.BigInt(approxMin);
 
-		const map = (id: number) => min + inc * id;
+		const map = (id: JSBI) => JSBI.multiply(JSBI.add(min, inc), id);
 
 		for (const w of this.words) w.id = map(w.id);
 		for (const w of this.grammars) w.word = map(w.word);
 		for (const s of this.marks) {
 			s.start = map(s.start);
-			if (s.startSide === "before") s.start -= 1;
-			else s.start += 1;
+			if (s.startSide === "before") s.start = JSBI.subtract(s.start, JSBI.BigInt(1));
+			else s.start = JSBI.add(s.start, JSBI.BigInt(1));
 			if (s.end) {
 				s.end = map(s.end);
-				if (s.endSide === "before") s.start -= 1;
-				else s.start += 1;
+				if (s.endSide === "before") s.start = JSBI.subtract(s.start, JSBI.BigInt(1));
+				else s.start = JSBI.add(s.start, JSBI.BigInt(1));
 			}
 
 			delete s.startSide;
@@ -144,7 +146,7 @@ export class MultiBuilder {
 
 	constructor(
 		lang: string,
-		id: number = builtin32(),
+		id = builtin63(),
 		publication?: Omit<t.Publication, "doc">,
 	) {
 		this.active = new Builder(lang, id, publication);
@@ -155,11 +157,11 @@ export class MultiBuilder {
 		const og = this.builders[0];
 		const pub = og.publication ? { ...og.publication } : undefined;
 		if (pub?.code) pub.code += code;
-		this.active = new Builder(og.doc.lang, builtin32(), pub);
+		this.active = new Builder(og.doc.lang, builtin63(), pub);
 		this.builders.push(this.active);
 	}
 
-	pushWord(text?: string, lang = this.active.doc.lang): number {
+	pushWord(text?: string, lang = this.active.doc.lang) {
 		return this.active.pushWord(text, lang);
 	}
 

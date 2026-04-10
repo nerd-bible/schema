@@ -1,6 +1,7 @@
 import type { Builder, MultiBuilder } from "../typescript/builder.ts";
 import * as t from "../typescript/tables.ts";
 import { createTableToSqlite } from "./valioToSchema.ts";
+import JSBI from "jsbi";
 
 export type Serializable = string | number | object;
 export const serialize = {
@@ -12,6 +13,8 @@ export const serialize = {
 			case "string":
 				return `'${v}'`;
 			case "object":
+				if (v instanceof JSBI) return v.toString();
+				if (v instanceof Date) return (v.getTime() / 1000).toString();
 				return `jsonb(${serialize.value(JSON.stringify(v))})`;
 			default:
 				throw new Error("cannot serialize" + v);
@@ -30,7 +33,7 @@ export type Db = {
 
 export function schema(db: Db) {
 	for (const k in t) {
-		const sql = createTableToSqlite(k, t[k as keyof typeof t]);
+		const sql = createTableToSqlite(k, (t as any)[k]);
 		db.exec(sql);
 	}
 }
@@ -39,7 +42,7 @@ export function rows(
 	db: Db,
 	table: string,
 	rows?: Record<string, Serializable>[],
-	batchSize = 1,
+	batchSize = 10_000,
 ) {
 	if (!rows) return;
 
