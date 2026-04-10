@@ -40,11 +40,11 @@ function parseTag(doc: MultiBuilder, tag: Book[number]) {
 				code: publication.code + "_NOTE",
 				published: publication.published,
 			});
-			const forkId = doc.active.doc.id;
-			for (const t of tag.children) parseTag(doc, t);
+			doc.builders[0].startMark(tag.tag, doc.active.doc.id);
 
+			for (const t of tag.children) parseTag(doc, t);
 			doc.active = doc.builders[0];
-			doc.startMark(tag.tag, forkId);
+
 			break;
 	}
 }
