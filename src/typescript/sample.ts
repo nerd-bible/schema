@@ -35,10 +35,16 @@ function parseTag(doc: MultiBuilder, tag: Book[number]) {
 			doc.endMark(tag.tag);
 			break;
 		case "pn":
-			doc.startMark(tag.tag);
-			doc.fork("_NOTE");
+			const publication = doc.active.publication!;
+			doc.fork({
+				code: publication.code + "_NOTE",
+				published: publication.published,
+			});
+			const forkId = doc.active.doc.id;
 			for (const t of tag.children) parseTag(doc, t);
+
 			doc.active = doc.builders[0];
+			doc.startMark(tag.tag, forkId);
 			break;
 	}
 }

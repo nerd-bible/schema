@@ -153,11 +153,9 @@ export class MultiBuilder {
 		this.builders.push(this.active);
 	}
 
-	fork(code?: string) {
+	fork(newPublication?: Builder["publication"]) {
 		const og = this.builders[0];
-		const pub = og.publication ? { ...og.publication } : undefined;
-		if (pub?.code) pub.code += code;
-		this.active = new Builder(og.doc.lang, builtin63(), pub);
+		this.active = new Builder(og.doc.lang, builtin63(), newPublication);
 		this.builders.push(this.active);
 	}
 

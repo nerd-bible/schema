@@ -16,8 +16,10 @@ export const serialize = {
 				if (v instanceof JSBI) return v.toString();
 				if (v instanceof Date) return (v.getTime() / 1000).toString();
 				return `jsonb(${serialize.value(JSON.stringify(v))})`;
+			case "boolean":
+				return v ? "1" : "0";
 			default:
-				throw new Error("cannot serialize" + v);
+				throw new Error("cannot serialize " + v);
 		}
 	},
 	row: (row: Serializable[]) => `(${row.map(serialize.value).join(",")})`,

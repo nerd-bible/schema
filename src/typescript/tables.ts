@@ -16,11 +16,10 @@ export type Doc = v.Output<typeof doc>;
 export const publication = v
 	.object({
 		doc: bigint().register("col", "PRIMARY KEY REFERENCES doc(id)"),
-		// TODO: add check?
-		book: v.string(), // https://ubsicap.github.io/usfm/identification/books.html
 		code: v.string(), // publisher defined, like BSB, ESV, etc.
 	})
 	.extendPartial({
+		book: v.string(), // https://ubsicap.github.io/usfm/identification/books.html
 		published: v.date(),
 		url: v.string(),
 	});
@@ -104,8 +103,8 @@ export const mark = v
 	.register(
 		"extra",
 		[
-			"CREATE INDEX markStart ON mark(start)",
-			"CREATE INDEX markEnd ON mark(end)",
+			"CREATE INDEX markStart ON mark(start, data)",
+			"CREATE INDEX markEnd ON mark(end, data)",
 		].join(";\n"),
 	);
 export type Mark = v.Output<typeof mark>;
