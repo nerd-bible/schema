@@ -107,10 +107,10 @@ export class Builder {
 		if (last) last.end = JSBI.BigInt(this.words.length - 1);
 	}
 
-	remapIds(loadFactor: number) {
+	remapWordIds(loadFactor: number) {
 		const approxMaxInt = JSBI.toNumber(JSBI.BigInt("0xFFFFFFFF"));
 		const approxMin = Math.floor(approxMaxInt * -loadFactor);
-		const approxInc = Math.floor(approxMin / -this.words.length * 2);
+		const approxInc = Math.floor((approxMin / -this.words.length) * 2);
 		const inc = JSBI.BigInt(approxInc);
 		const min = JSBI.BigInt(approxMin);
 
@@ -120,11 +120,13 @@ export class Builder {
 		for (const w of this.grammars) w.word = map(w.word);
 		for (const s of this.marks) {
 			s.start = map(s.start);
-			if (s.startSide === "before") s.start = JSBI.subtract(s.start, JSBI.BigInt(1));
+			if (s.startSide === "before")
+				s.start = JSBI.subtract(s.start, JSBI.BigInt(1));
 			else s.start = JSBI.add(s.start, JSBI.BigInt(1));
 			if (s.end) {
 				s.end = map(s.end);
-				if (s.endSide === "before") s.start = JSBI.subtract(s.start, JSBI.BigInt(1));
+				if (s.endSide === "before")
+					s.start = JSBI.subtract(s.start, JSBI.BigInt(1));
 				else s.start = JSBI.add(s.start, JSBI.BigInt(1));
 			}
 
@@ -134,7 +136,7 @@ export class Builder {
 	}
 
 	finalize(loadFactor = 0.8): this {
-		this.remapIds(loadFactor);
+		this.remapWordIds(loadFactor);
 		return this;
 	}
 }
@@ -153,9 +155,9 @@ export class MultiBuilder {
 		this.builders.push(this.active);
 	}
 
-	fork(newPublication?: Builder["publication"]) {
+	fork(newPublication?: Builder["publication"], newId = builtin63()) {
 		const og = this.builders[0];
-		this.active = new Builder(og.doc.lang, builtin63(), newPublication);
+		this.active = new Builder(og.doc.lang, newId, newPublication);
 		this.builders.push(this.active);
 	}
 
@@ -180,7 +182,7 @@ export class MultiBuilder {
 	}
 
 	remapIds(loadFactor: number) {
-		for (const b of this.builders) b.remapIds(loadFactor);
+		for (const b of this.builders) b.remapWordIds(loadFactor);
 	}
 
 	finalize(loadFactor = 0.8): this {

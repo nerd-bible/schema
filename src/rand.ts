@@ -23,7 +23,7 @@ export const builtin32 = () => crypto.getRandomValues(new Int32Array(1))[0];
 export const builtin64 = () =>
 	new Float64Array(crypto.getRandomValues(new Int32Array(2)).buffer)[0];
 
-export const builtin63 = () => {
+export function builtin63(): JSBI {
 	const buffer = crypto.getRandomValues(new Int32Array(2)).buffer;
 	let res = JSBI.DataViewGetBigInt64(new DataView(buffer), 0);
 	// shift instead of AND to preserve sign
