@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import { expect } from "expect";
 import { Hasher } from "./hash.ts";
-import JSBI from "jsbi";
 
 test("Hasher", async () => {
 	const h = new Hasher("SHA-512");
@@ -9,13 +8,13 @@ test("Hasher", async () => {
 	await h.number(1);
 	await h.boolean(true);
 	await h.undefined();
-	await h.bigint(JSBI.BigInt("201203012030120301203123012031123123123"));
+	await h.bigint(201203012030120301203123012031123123123n);
 	await h.object({ foo: "bar", bar: "baz" });
 	const expected = Uint8Array.from([
-		114, 180, 130, 69, 75, 123, 192, 48, 67, 206, 129, 95, 77, 66, 123, 111, 75,
-		251, 198, 241, 94, 187, 169, 115, 136, 55, 93, 231, 156, 183, 58, 148, 101,
-		177, 207, 66, 132, 76, 87, 49, 36, 44, 130, 14, 28, 48, 228, 211, 122, 37,
-		180, 88, 65, 169, 150, 176, 108, 32, 8, 17, 23, 107, 12, 132,
+		197, 218, 12, 218, 180, 104, 87, 245, 80, 49, 158, 188, 48, 51, 2, 107, 91,
+		75, 22, 21, 179, 135, 76, 114, 205, 139, 188, 55, 38, 120, 187, 242, 139,
+		42, 13, 41, 76, 91, 237, 56, 53, 67, 70, 202, 149, 146, 66, 235, 163, 237,
+		247, 244, 131, 124, 62, 221, 44, 27, 63, 242, 78, 161, 189, 199,
 	]);
 	expect(h.hash.byteLength).toEqual(64);
 	expect(new Uint8Array(h.hash)).toEqual(expected);

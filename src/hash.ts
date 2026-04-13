@@ -1,5 +1,3 @@
-import JSBI from "jsbi";
-
 const encoder = new TextEncoder();
 
 export class Hasher {
@@ -38,14 +36,11 @@ export class Hasher {
 		return this.number(-1);
 	}
 
-	async bigint(n: JSBI) {
-		const encoded = new Uint8Array(n.length * 4);
-		JSBI.DataViewSetBigInt64(new DataView(encoded.buffer), 0, n);
-		return this.buffer(encoded.buffer);
+	async bigint(n: bigint) {
+		return this.string(n.toString(36));
 	}
 
 	async any(a: any) {
-		if (a instanceof JSBI) return this.bigint(a);
 		if (Array.isArray(a)) {
 			for (const e of a) await this.any(e);
 			return;
@@ -56,6 +51,8 @@ export class Hasher {
 				return this.string(a);
 			case "number":
 				return this.number(a);
+			case "bigint":
+				return this.bigint(a);
 			case "boolean":
 				return this.boolean(a);
 			case "object":

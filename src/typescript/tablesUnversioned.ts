@@ -1,7 +1,6 @@
 import * as v from "@nerd-bible/valio";
-import { bigint } from "./valio.ts";
 
-const docId = bigint().register("col", "REFERENCES doc(id)");
+const docId = v.bigint().register("col", "REFERENCES doc(id)");
 // Search.
 // This caching table is needed because:
 // 1. Search uses a sequence algorithm that requires selecting adjacent words.
@@ -12,11 +11,11 @@ const docId = bigint().register("col", "REFERENCES doc(id)");
 export const wordSearch = v
 	.object({
 		doc: docId,
-		word: bigint(),
-		wordEnd: bigint(), // in case of N->1 mapping (i.e. one hundred ten -> 110)
+		word: v.bigint(),
+		wordEnd: v.bigint(), // in case of N->1 mapping (i.e. one hundred ten -> 110)
 
 		plane: v.number(),
-		pos: bigint(),
+		pos: v.bigint(),
 		stem: v.string(),
 	})
 	.register(

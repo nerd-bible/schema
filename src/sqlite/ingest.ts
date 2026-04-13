@@ -1,7 +1,6 @@
 import type { Builder, MultiBuilder } from "../typescript/builder.ts";
-import * as t from "../typescript/tables.ts";
+import * as t from "../typescript/tablesVersioned.ts";
 import { createTableToSqlite } from "./valioToSchema.ts";
-import JSBI from "jsbi";
 
 export type Serializable = string | number | object;
 export const serialize = {
@@ -9,11 +8,11 @@ export const serialize = {
 		if (v == null) return "NULL";
 		switch (typeof v) {
 			case "number":
+			case "bigint":
 				return v.toString();
 			case "string":
 				return `'${v}'`;
 			case "object":
-				if (v instanceof JSBI) return v.toString();
 				if (v instanceof Date) return (v.getTime() / 1000).toString();
 				return `jsonb(${serialize.value(JSON.stringify(v))})`;
 			case "boolean":

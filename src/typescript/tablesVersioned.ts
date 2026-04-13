@@ -1,8 +1,7 @@
 import * as v from "@nerd-bible/valio";
-import { bigint } from "./valio.ts";
 
 const lang = v.string(); // ISO-639
-const id = bigint().register("col", "PRIMARY KEY");
+const id = v.bigint().register("col", "PRIMARY KEY");
 
 // TODO: canon and book groups: https://en.wikipedia.org/wiki/Biblical_canon
 // List of words with stable ids that can be searched.
@@ -19,7 +18,7 @@ export type Doc = v.Output<typeof doc>;
 
 export const publication = v
 	.object({
-		doc: bigint().register("col", "PRIMARY KEY REFERENCES doc(id)"),
+		doc: v.bigint().register("col", "PRIMARY KEY REFERENCES doc(id)"),
 		code: v.string(), // publisher defined, like BSB, ESV, etc.
 	})
 	.extendPartial({
@@ -34,11 +33,11 @@ export type Publication = v.Output<typeof publication>;
 // 53 bit = 5.5e-7 <- Max safe integer, requires JS bigint to generate
 // 64 bit = 2.7e-10 <- Requires JS bigint to generate and read
 // https://kevingal.com/apps/collision.html
-const docId = bigint().register("col", "REFERENCES doc(id)");
+const docId = v.bigint().register("col", "REFERENCES doc(id)");
 export const word = v
 	.object({
 		doc: docId,
-		id: bigint(),
+		id: v.bigint(),
 	})
 	.extendPartial({
 		lang: v.string(),
@@ -52,7 +51,7 @@ export const grammar = v
 	.object({
 		owner: docId,
 		doc: docId,
-		word: bigint(),
+		word: v.bigint(),
 	})
 	.extendPartial({
 		// conllu fields
@@ -76,7 +75,7 @@ export const mark = v
 	.object({
 		owner: docId,
 		doc: docId,
-		start: bigint(), // inclusive
+		start: v.bigint(), // inclusive
 
 		tag: v.enum([
 			"p", // paragraph
@@ -95,7 +94,7 @@ export const mark = v
 	})
 	.extendPartial({
 		data: v.any(),
-		end: bigint(), // inclusive
+		end: v.bigint(), // inclusive
 	})
 	// .register(
 	// 	"table",
