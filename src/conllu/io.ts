@@ -44,7 +44,7 @@ export const word = z.object({
 	upos: z.string(),
 	xpos: z.string(),
 	feats: recordConllu(),
-	head: z.codecs.number(),
+	head: z.string(),
 	deprel: z.string(),
 	deps: recordConllu({ prop: "|", value: ":" }),
 	//.pipe(z.record(z.codecs.number().gte(0), primitive)),

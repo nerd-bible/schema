@@ -1,8 +1,9 @@
 import type { Builder, MultiBuilder } from "../typescript/builder.ts";
-import * as t from "../typescript/tablesVersioned.ts";
+import * as versioned from "../typescript/tablesVersioned.ts";
+// import * as unversioned from "../typescript/tablesUnversioned.ts";
 import { createTableToSqlite } from "./valioToSchema.ts";
 
-export type Serializable = string | number | object;
+export type Serializable = string | number | object | bigint;
 export const serialize = {
 	value(v: Serializable): string {
 		if (v == null) return "NULL";
@@ -33,8 +34,8 @@ export type Db = {
 };
 
 export function schema(db: Db) {
-	for (const k in t) {
-		const sql = createTableToSqlite(k, (t as any)[k]);
+	for (const k in versioned) {
+		const sql = createTableToSqlite(k, (versioned as any)[k]);
 		db.exec(sql);
 	}
 }
