@@ -8,6 +8,18 @@ export class Hasher {
 		this.algo = algo;
 	}
 
+	reset() {
+		this.hash = new ArrayBuffer();
+	}
+
+	bigint64() {
+		return new BigInt64Array(this.hash.slice(0, 8))[0];
+	}
+
+	bigint63() {
+		return this.bigint64() & -2n;
+	}
+
 	async buffer(b: ArrayBuffer) {
 		const digest = await crypto.subtle.digest(this.algo, b);
 		const next = new Uint8Array(this.hash.byteLength + digest.byteLength);
@@ -40,6 +52,16 @@ export class Hasher {
 		return this.string(n.toString(36));
 	}
 
+	async object(o: object) {
+		if (o === null) return this.number(-2);
+
+		const keys = Object.keys(o).sort();
+		for (const k of keys) {
+			await this.string(k);
+			await this.any(o[k as keyof typeof o]);
+		}
+	}
+
 	async any(a: any) {
 		if (Array.isArray(a)) {
 			for (const e of a) await this.any(e);
@@ -61,16 +83,6 @@ export class Hasher {
 				return this.undefined();
 			default:
 				throw Error("cannot hash " + a);
-		}
-	}
-
-	async object(o: object) {
-		if (o === null) return this.number(-2);
-
-		const keys = Object.keys(o).sort();
-		for (const k of keys) {
-			await this.string(k);
-			await this.any(o[k as keyof typeof o]);
 		}
 	}
 }

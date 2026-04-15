@@ -1,6 +1,5 @@
-import type { Builder, MultiBuilder } from "../typescript/builder.ts";
-import * as versioned from "../typescript/tablesVersioned.ts";
-// import * as unversioned from "../typescript/tablesUnversioned.ts";
+import type { Builder} from "../typescript/builder.ts";
+import * as tables from "../typescript/tables.ts";
 import { createTableToSqlite } from "./valioToSchema.ts";
 
 export type Serializable = string | number | object | bigint;
@@ -34,8 +33,15 @@ export type Db = {
 };
 
 export function schema(db: Db) {
-	for (const k in versioned) {
-		const sql = createTableToSqlite(k, (versioned as any)[k]);
+	for (const k in tables) {
+		const sql = createTableToSqlite(k, (tables as any)[k]);
+		// https://dbdiagram.io/d
+		// console.log(
+		// 	sql
+		// 		.replace(/STRICT,?/g, "")
+		// 		.replace(/WITHOUT ROWID,?/g, "")
+		// 		.replaceAll("ANY", "BLOB"),
+		// );
 		db.exec(sql);
 	}
 }
@@ -51,7 +57,7 @@ export function rows(
 	const columns = Object.keys(rows[0] ?? []);
 	for (let i = 0; i < rows.length; i += batchSize) {
 		const batch = rows.slice(i, i + batchSize);
-		const q = "insert into " + table + serialize.rows(columns, batch);
+		const q = "insert into " + table + serialize.rows(columns, batch) + ";";
 		try {
 			db.exec(q);
 		} catch (err) {
@@ -62,20 +68,15 @@ export function rows(
 	}
 }
 
-export function document(db: Db, doc: Builder) {
-	rows(db, "doc", [doc.doc]);
-	if (doc.publication)
-		rows(db, "publication", [
-			{
-				doc: doc.doc.id,
-				...doc.publication,
-			},
-		]);
-	rows(db, "word", doc.words);
-	rows(db, "grammar", doc.grammars);
-	rows(db, "mark", doc.marks);
-}
+export function documents(db: Db, b: Builder) {
+	rows(db, "doc", b.docs);
+	for (const w of b.docWords.values()) rows(db, "word", w);
+	for (const m of b.docMarks.values()) rows(db, "mark", m);
 
-export function documents(db: Db, doc: MultiBuilder) {
-	for (const b of doc.builders) document(db, b);
+	rows(db, "docTag", b.docTags);
+	rows(db, "scripture", b.scriptures);
+	rows(db, "outline", b.outlines);
+	rows(db, "highlight", b.highlights);
+	rows(db, "note", b.notes);
+	rows(db, "xref", b.xrefs);
 }

@@ -16,10 +16,11 @@ if (import.meta.main) {
 	const db = openDb(true);
 
 	ingest.schema(db);
+	console.log(db.prepare("select sqlite_version();").all());
 	db.exec("begin;");
 	ingest.documents(db, sample.gen);
 	ingest.documents(db, sample.exo);
-	db.exec("commit;analyze;");
+	db.exec("end;analyze;");
 	// Test triggers
 	// db.exec("update word set id=180 where doc=2 and id=172");
 }

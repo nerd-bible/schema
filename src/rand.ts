@@ -13,11 +13,5 @@
 // 	return ((t ^ (t >>> 14)) >>> 0);
 // };
 
-export const builtin32 = () => crypto.getRandomValues(new Int32Array(1))[0];
-export const builtin64 = () =>
-	new Float64Array(crypto.getRandomValues(new Int32Array(2)).buffer)[0];
-
-export function builtin63(): bigint {
-	const values = crypto.getRandomValues(new BigInt64Array(1));
-	return values[0] & -2n;
-}
+export const builtin64 = () => crypto.getRandomValues(new BigInt64Array(1))[0];
+export const builtin63 = () => builtin64() & -2n;

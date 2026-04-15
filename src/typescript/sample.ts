@@ -1,83 +1,82 @@
-import { MultiBuilder } from "./builder.ts";
+import { Hasher } from "../hash.ts";
+import { Builder } from "./builder.ts";
+import type { Book } from "./tables.ts";
 
-type Heading = { tag: "h2"; children: Inline[] };
+const hasher = new Hasher("SHA-256");
+
+type Heading = { tag: "h2"; text: string };
 type Paragraph = { tag: "p" };
 type Chapter = { tag: "c"; n: number };
 type Verse = { tag: "v"; n: number };
 type Note = { tag: "pn"; children: Inline[] };
 type Span = { tag: "em" | "strong" | "q"; children: Inline[] };
 type Inline = Span | string;
-type Book = (Heading | Paragraph | Chapter | Verse | Note | Inline)[];
+type Content = (Heading | Paragraph | Chapter | Verse | Note | Inline)[];
 
-function parseTag(doc: MultiBuilder, tag: Book[number]) {
+async function parseTag(b: Builder, tag: Content[number]) {
 	if (typeof tag === "string") {
-		doc.pushText(tag);
+		b.pushText(tag);
 		return;
-	}
-	function parseFork(suffix: string, children: Inline[]) {
-		const publication = doc.active.publication!;
-		doc.fork({
-			code: publication.code + suffix,
-			published: publication.published,
-		});
-		for (const t of children) parseTag(doc, t);
-
-		const res = doc.active.doc.id;
-		doc.active = doc.builders[0];
-		return res;
 	}
 
 	switch (tag.tag) {
 		case "h2": {
-			const forkedId = parseFork("_H", tag.children);
-			doc.startMark("h", { level: 2, forkedId });
+			b.pushOutline({ level: 1, text: tag.text });
 			break;
 		}
 		case "p":
-			doc.startMark("p");
+			b.startMark("p");
 			break;
 		case "c":
-			doc.startMark("c", tag.n);
+			b.startMark("c", tag.n);
 			break;
 		case "v":
-			doc.startMark("v", tag.n);
+			b.startMark("v", tag.n);
 			break;
 		case "em":
 		case "strong":
 		case "q":
-			doc.startMark(tag.tag);
-			for (const t of tag.children) parseTag(doc, t);
-			doc.endMark(tag.tag);
+			b.startMark(tag.tag);
+			for (const t of tag.children) await parseTag(b, t);
+			b.endMark(tag.tag);
 			break;
 		case "pn": {
-			const forkedId = parseFork("_NOTE", tag.children);
-			doc.startMark(tag.tag, forkedId);
+			hasher.reset();
+			await hasher.any(tag.children);
+			b.pushNote({ id: hasher.bigint63(), lang: "eng", name: "Note" });
+			for (const t of tag.children) await parseTag(b, t);
+			b.docIndex = 0;
 			break;
 		}
 	}
 }
 
-function sampleDocument(id: string, content: Book) {
-	const doc = new MultiBuilder("eng", undefined, {
+async function sampleDocument(id: Book, content: Content) {
+	const b = new Builder();
+	await hasher.any(content);
+	b.pushScripture({
+		id: hasher.bigint63(),
+		lang: "eng",
 		book: id,
 		code: "BSB",
+		name: "Berean Standard Bible (excerpt)",
 		published: new Date("2025-12-23"),
 	});
-	for (const t of content) parseTag(doc, t);
-	return doc.finalize();
+	for (const t of content) await parseTag(b, t);
+	return b.finalize();
 }
 
 // TODO: usfm
-export const gen = sampleDocument("gen", [
+export const gen = await sampleDocument("gen", [
 	{ tag: "c", n: 1 },
-	{ tag: "h2", children: ["The Creation"] },
+	{ tag: "h2", text: "The Creation" },
 	{ tag: "p" },
 	{ tag: "v", n: 1 },
 	"In the beginning God created the heavens and the earth.",
 	{ tag: "p" },
 	{ tag: "v", n: 2 },
 	" Now the earth was formless and void, and darkness was over the surface of the deep. And the Spirit of God was hovering over the surface of the waters.",
-	{ tag: "h2", children: ["The First Day"] },
+	{ tag: "h2", text: "The First Day" },
 	{ tag: "p" },
 	{ tag: "v", n: 3 },
 	" And God said, “Let there be light,”",
@@ -92,7 +91,7 @@ export const gen = sampleDocument("gen", [
 		children: ["Literally ", { tag: "em", children: ["day one"] }],
 	},
 	{ tag: "c", n: 2 },
-	{ tag: "h2", children: ["The Seventh Day"] },
+	{ tag: "h2", text: "The Seventh Day" },
 	{ tag: "p" },
 	{ tag: "v", n: 1 },
 	" Thus the heavens and the earth were completed in all their vast array.",
@@ -102,9 +101,9 @@ export const gen = sampleDocument("gen", [
 	{ tag: "v", n: 3 },
 	" Then God blessed the seventh day and sanctified it, because on that day He rested from all the work of creation that He had accomplished.",
 ]);
-export const exo = sampleDocument("exo", [
+export const exo = await sampleDocument("exo", [
 	{ tag: "c", n: 1 },
-	{ tag: "h2", children: ["The Israelites Multiply in Egypt"] },
+	{ tag: "h2", text: "The Israelites Multiply in Egypt" },
 	{ tag: "p" },
 	{ tag: "v", n: 1 },
 	"These are the names of the sons of Israel who went to Egypt with Jacob, each with his family:",
@@ -129,7 +128,7 @@ export const exo = sampleDocument("exo", [
 	" Now Joseph and all his brothers and all that generation died,",
 	{ tag: "v", n: 7 },
 	" but the Israelites were fruitful and increased rapidly; they multiplied and became exceedingly numerous, so that the land was filled with them.",
-	{ tag: "h2", children: ["Oppression by a New King"] },
+	{ tag: "h2", text: "Oppression by a New King" },
 	{ tag: "p" },
 	{ tag: "v", n: 8 },
 	" Then a new king, who did not know Joseph, came to power in Egypt.",
@@ -142,7 +141,7 @@ export const exo = sampleDocument("exo", [
 		children: ["Or ", { tag: "em", children: ["and take the country"] }],
 	},
 	{ tag: "c", n: 2 },
-	{ tag: "h2", children: ["The Birth and Adoption of Moses"] },
+	{ tag: "h2", text: "The Birth and Adoption of Moses" },
 	{ tag: "p" },
 	{ tag: "v", n: 1 },
 	" Now a man of the house of Levi married a Levite woman,",

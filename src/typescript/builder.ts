@@ -1,15 +1,16 @@
-import { builtin63 } from "../rand.ts";
-import * as t from "./tablesVersioned.ts";
+import { builtin64 } from "../rand.ts";
+import * as t from "./tables.ts";
 
 const isWordSeperator = (text: string) =>
 	text.match(/[\p{Pc}\p{Pd}\p{Z}]+/u) != null;
-const noop = () => undefined;
 
 export type Token = {
 	before: string;
 	text: string;
 	after: string;
 };
+
+type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] };
 
 // TODO: some language normalization (contractions, numbers, abbreviations, spelling)
 // https://github.com/shelfio/text-normalizer/blob/master/src/english-mapping.ts
@@ -43,145 +44,182 @@ export function tokenize(input: string, lang: string): Token[] {
 	return words;
 }
 
+function getOrInsert<K, V>(map: Map<K, V>, key: K, value: V): V {
+	const maybe = map.get(key);
+	if (maybe) return maybe;
+	map.set(key, value);
+	return value;
+}
+
 export class Builder {
-	doc: t.Doc;
-	publication?: Omit<t.Publication, "doc">;
+	docs: t.Doc[] = [];
+	docTags: t.DocTag[] = [];
+	scriptures: t.Scripture[] = [];
+	highlights: t.Highlight[] = [];
+	notes: t.Note[] = [];
+	outlines: t.Outline[] = [];
+	xrefs: t.Xref[] = [];
 
-	words: t.Word[] = [];
-	grammars: t.Grammar[] = [];
+	docWords: Map<bigint, t.Word[]> = new Map();
+	docMarks: Map<bigint, t.Mark[]> = new Map();
 
-	marks: (t.Mark & {
-		startSide?: "before" | "after";
-		endSide?: "before" | "after";
-	})[] = [];
+	docIndex = 0;
 
-	constructor(
-		lang: string,
-		id = builtin63(),
-		publication?: Omit<t.Publication, "doc">,
+	get doc() {
+		return this.docs[this.docIndex];
+	}
+
+	get scripture() {
+		return this.scriptures[this.scriptures.length - 1];
+	}
+
+	get words() {
+		return getOrInsert(this.docWords, this.doc.id, []);
+	}
+
+	get wordId() {
+		return BigInt(this.words.length) * 3n;
+	}
+
+	get marks() {
+		return getOrInsert(this.docMarks, this.doc.id, []);
+	}
+
+	get chapter() {
+		return this.marks.findLast((m) => m.tag === "c")?.data ?? 1;
+	}
+
+	get verse() {
+		return this.marks.findLast((m) => m.tag === "v")?.data ?? 1;
+	}
+
+	pushDoc(doc: MakeOptional<t.Doc, "id">) {
+		this.docs.push({
+			id: doc.id ?? builtin64(),
+			lang: doc.lang,
+			name: doc.name,
+		});
+		this.docIndex = this.docs.length - 1;
+	}
+
+	pushScripture(doc: MakeOptional<t.Doc, "id"> & Omit<t.Scripture, "doc">) {
+		this.pushDoc(doc);
+		this.scriptures.push({
+			doc: this.doc.id,
+			code: doc.code,
+			book: doc.book,
+			published: doc.published,
+			urls: doc.urls,
+		});
+	}
+
+	pushOutline(
+		outline: MakeOptional<t.Outline, "doc" | "scripture" | "chapter" | "verse">,
 	) {
-		this.doc = { id, lang };
-		this.publication = publication;
+		this.outlines.push({
+			doc: outline.doc ?? this.doc.id,
+			scripture: outline.scripture ?? this.scripture.doc,
+			chapter: this.chapter,
+			verse: this.verse,
+			level: outline.level,
+			text: outline.text,
+		});
+	}
+
+	pushNote(
+		note: MakeOptional<t.Doc, "id"> &
+			MakeOptional<Omit<t.Note, "doc">, "ref" | "refStart">,
+	) {
+		this.pushDoc(note);
+		this.notes.push({
+			doc: this.doc.id,
+			ref: this.doc.id,
+			refStart: note.refStart ?? BigInt(this.words.length - 1),
+			refEnd: note.refEnd,
+			highlight: note.highlight,
+		});
 	}
 
 	pushWord(text?: string, lang = this.doc.lang) {
-		const id = BigInt(this.words.length);
-
-		this.words.push({
+		const words = this.words;
+		words.push({
 			doc: this.doc.id,
-			id,
+			id: this.wordId,
 			lang: lang === this.doc.lang ? undefined : lang,
 			text,
 		});
-
-		return id;
 	}
 
-	pushText(
-		text: string,
-		lang = this.doc.lang,
-		grammar: (t: Token) => Omit<t.Grammar, "doc" | "word"> | undefined = noop,
-	) {
-		for (const t of tokenize(text, this.doc.lang)) {
-			const id = this.pushWord(t.before + t.text + t.after, lang);
-			const g = grammar(t);
-			if (g) this.grammars.push({ doc: this.doc.id, word: id, ...g });
-		}
+	pushText(text: string, lang = this.doc.lang) {
+		for (const t of tokenize(text, this.doc.lang))
+			this.pushWord(t.before + t.text + t.after, lang);
 	}
 
 	startMark(tag: t.Mark["tag"], data: t.Mark["data"] = {}) {
-		this.marks.push({
+		const marks = this.marks;
+		marks.push({
 			doc: this.doc.id,
-			start: BigInt(this.words.length),
-			startSide: "before",
-			end: BigInt(this.words.length),
-			endSide: "after",
+			start: this.wordId - 1n,
 			tag,
 			data,
 		});
 	}
 
-	endMark(tag: string) {
-		const last = this.marks.findLast((s) => s.tag === tag);
-		if (last) last.end = BigInt(this.words.length - 1);
+	endMark(tag: t.Mark["tag"]) {
+		const marks = this.marks;
+		const last = marks.findLast((s) => s.doc === this.doc.id && s.tag === tag);
+		if (last) last.end = BigInt(this.wordId - 2n);
 	}
 
 	remapWordIds(loadFactor: number) {
+		// Build map fns
+		const docMapFns = new Map<bigint, (id: bigint) => bigint>();
 		const approxMaxInt = Number(BigInt("0xFFFFFFFFFFFFFFFF"));
-		const approxMin = Math.floor(approxMaxInt * -loadFactor);
-		const approxInc = Math.floor((approxMin / -this.words.length) * 2);
-		const inc = BigInt(approxInc);
-		const min = BigInt(approxMin);
+		const approxMin = Math.floor(-approxMaxInt * loadFactor);
+		const min = (BigInt(approxMin) >> 2n) << 1n;
+		for (const d of this.docs) {
+			const words = this.docWords.get(d.id)!;
+			const approxInc = Math.floor(-approxMin / (words.length - 1));
+			const inc = BigInt(approxInc);
+			docMapFns.set(d.id, (idx: bigint) => {
+				let res = min + inc * (idx / 3n);
+				switch (idx % 3n) {
+					case 1n: return res + 1n;
+					case 2n: return res + inc - 1n;
+				}
+				return res;
+			});
+		}
 
-		const map = (id: bigint) => min + inc * id;
-
-		for (const w of this.words) w.id = map(w.id);
-		for (const w of this.grammars) w.word = map(w.word);
-		for (const s of this.marks) {
-			s.start = map(s.start);
-			s.start += s.startSide === "before" ? 1n : -1n;
-			if (s.end) {
-				s.end = map(s.end);
-				s.end += s.endSide === "before" ? 1n : -1n;
+		// Use map fns
+		for (const [id, words] of this.docWords.entries()) {
+			const mapper = docMapFns.get(id)!;
+			for (const w of words) w.id = mapper(w.id);
+		}
+		for (const [id, marks] of this.docMarks.entries()) {
+			const mapper = docMapFns.get(id)!;
+			for (const m of marks) {
+				m.start = mapper(m.start);
+				if (m.end) m.end = mapper(m.end);
 			}
-
-			delete s.startSide;
-			delete s.endSide;
+		}
+		for (const n of this.notes) {
+			const mapper = docMapFns.get(n.ref)!;
+			n.refStart = mapper(n.refStart);
+			if (n.refEnd) n.refEnd = mapper(n.refEnd);
+		}
+		for (const x of this.xrefs) {
+			const srcMapper = docMapFns.get(x.src)!;
+			x.srcStart = srcMapper(x.srcStart);
+			if (x.srcEnd) x.srcEnd = srcMapper(x.srcEnd);
+			const destMapper = docMapFns.get(x.dest)!;
+			if (x.destStart) x.destStart = destMapper(x.destStart);
+			if (x.destEnd) x.destEnd = destMapper(x.destEnd);
 		}
 	}
 
 	finalize(loadFactor = 0.8): this {
 		this.remapWordIds(loadFactor);
-		return this;
-	}
-}
-
-// Doc and subdocuments
-export class MultiBuilder {
-	builders: Builder[] = [];
-	active: Builder;
-
-	constructor(
-		lang: string,
-		id = builtin63(),
-		publication?: Omit<t.Publication, "doc">,
-	) {
-		this.active = new Builder(lang, id, publication);
-		this.builders.push(this.active);
-	}
-
-	fork(newPublication?: Builder["publication"], newId = builtin63()) {
-		const og = this.builders[0];
-		this.active = new Builder(og.doc.lang, newId, newPublication);
-		this.builders.push(this.active);
-	}
-
-	pushWord(text?: string, lang = this.active.doc.lang) {
-		return this.active.pushWord(text, lang);
-	}
-
-	pushText(
-		text: string,
-		lang = this.active.doc.lang,
-		grammar: (t: Token) => Omit<t.Grammar, "doc" | "word"> | undefined = noop,
-	) {
-		return this.active.pushText(text, lang, grammar);
-	}
-
-	startMark(tag: t.Mark["tag"], data: t.Mark["data"] = {}) {
-		return this.active.startMark(tag, data);
-	}
-
-	endMark(tag: string) {
-		return this.active.endMark(tag);
-	}
-
-	remapIds(loadFactor: number) {
-		for (const b of this.builders) b.remapWordIds(loadFactor);
-	}
-
-	finalize(loadFactor = 0.8): this {
-		this.remapIds(loadFactor);
 		return this;
 	}
 }
