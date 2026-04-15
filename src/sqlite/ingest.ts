@@ -1,4 +1,4 @@
-import type { Builder} from "../typescript/builder.ts";
+import type { Builder } from "../typescript/builder.ts";
 import * as tables from "../typescript/tables.ts";
 import { createTableToSqlite } from "./valioToSchema.ts";
 
@@ -30,6 +30,7 @@ export const serialize = {
 
 export type Db = {
 	exec(query: string): void;
+	run(query: string): Record<string, any>[];
 };
 
 export function schema(db: Db) {

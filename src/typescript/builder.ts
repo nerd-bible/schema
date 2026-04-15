@@ -1,8 +1,10 @@
 import { builtin64 } from "../rand.ts";
 import * as t from "./tables.ts";
+import * as ref from "@nerd-bible/ref";
 
 const isWordSeperator = (text: string) =>
 	text.match(/[\p{Pc}\p{Pd}\p{Z}]+/u) != null;
+const bcv = new RegExp(ref.bcvStrict.source, ref.bcv.flags + "g");
 
 export type Token = {
 	before: string;
@@ -12,8 +14,6 @@ export type Token = {
 
 type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] };
 
-// TODO: some language normalization (contractions, numbers, abbreviations, spelling)
-// https://github.com/shelfio/text-normalizer/blob/master/src/english-mapping.ts
 export function tokenize(input: string, lang: string): Token[] {
 	const words: ReturnType<typeof tokenize> = [];
 	let next = { before: "", text: "", after: "" };
@@ -151,18 +151,26 @@ export class Builder {
 	}
 
 	pushText(text: string, lang = this.doc.lang) {
-		for (const t of tokenize(text, this.doc.lang))
-			this.pushWord(t.before + t.text + t.after, lang);
+		const tokenizeSpan = (start: number, end: number) => {
+			for (const t of tokenize(text.substring(start, end), this.doc.lang))
+				this.pushWord(t.before + t.text + t.after, lang);
+		};
+
+		let i = 0;
+		for (const m of text.matchAll(bcv)) {
+			tokenizeSpan(i, m.index);
+			this.startMark("ref", { book: m[1], chapter: +m[2], verse: +m[3] });
+			const end = m.index + m[0].length;
+			this.pushWord(text.substring(m.index, end), "r");
+			this.endMark("ref");
+			i = end;
+		}
+		tokenizeSpan(i, text.length);
 	}
 
 	startMark(tag: t.Mark["tag"], data: t.Mark["data"] = {}) {
 		const marks = this.marks;
-		marks.push({
-			doc: this.doc.id,
-			start: this.wordId - 1n,
-			tag,
-			data,
-		});
+		marks.push({ doc: this.doc.id, start: this.wordId - 1n, tag, data });
 	}
 
 	endMark(tag: t.Mark["tag"]) {
@@ -184,8 +192,10 @@ export class Builder {
 			docMapFns.set(d.id, (idx: bigint) => {
 				let res = min + inc * (idx / 3n);
 				switch (idx % 3n) {
-					case 1n: return res + 1n;
-					case 2n: return res + inc - 1n;
+					case 1n:
+						return res + 1n;
+					case 2n:
+						return res + inc - 1n;
 				}
 				return res;
 			});

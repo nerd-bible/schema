@@ -81,14 +81,8 @@ export type Xref = v.Output<typeof xref>;
 
 // Document content
 export const word = v
-	.object({
-		doc: docId,
-		id: v.bigint(),
-	})
-	.extendPartial({
-		lang: v.string(),
-		text: v.string(),
-	})
+	.object({ doc: docId, id: v.bigint() })
+	.extendPartial({ lang: v.string(), text: v.string() })
 	.register("table", "PRIMARY KEY (doc, id)")
 	.register("extra", "CREATE INDEX wordLangText ON word(lang, text)");
 export type Word = v.Output<typeof word>;
@@ -107,6 +101,7 @@ export const mark = v
 			"h", // heading
 			"em", // emphasis (italic)
 			"strong", // strong (bold)
+			"ref", // bcv
 		]),
 	})
 	.extendPartial({
@@ -133,11 +128,13 @@ export const wordSearch = v
 	.object({
 		doc: docId,
 		word: v.bigint(),
-		wordEnd: v.bigint(), // in case of N->1 mapping (i.e. one hundred ten -> 110)
 
 		plane: v.number(),
 		pos: v.bigint(),
 		stem: v.string(),
+	})
+	.extendPartial({
+		wordEnd: v.bigint(), // in case of N->1 mapping (i.e. one hundred ten -> 110)
 	})
 	.register(
 		"table",
@@ -162,18 +159,20 @@ export type WordSearch = v.Output<typeof wordSearch>;
 // TODO: store more fine-grained info to speed up large document regeneration
 const insertWordInvalid = (op: string) =>
 	`INSERT INTO wordSearchInvalid (doc) VALUES (${op == "DELETE" ? "old" : "new"}.doc) ON CONFLICT DO NOTHING;`;
-export const wordSearchInvalid = v.object({ doc: docId }).register(
-	"extra",
-	["INSERT", "DELETE", "UPDATE"]
-		.map(
-			(op) =>
-				`CREATE TRIGGER word${op} AFTER ${op} ON word BEGIN ${insertWordInvalid(op)} END`,
-		)
-		.concat(
-			`CREATE TRIGGER docUpdate AFTER UPDATE OF lang ON doc BEGIN ${insertWordInvalid("UPDATE")} END`,
-		)
-		.join(";\n"),
-);
+export const wordSearchInvalid = v
+	.object({ doc: v.bigint().register("col", "PRIMARY KEY REFERENCES doc(id)") })
+	.register(
+		"extra",
+		["INSERT", "DELETE", "UPDATE"]
+			.map(
+				(op) =>
+					`CREATE TRIGGER word${op} AFTER ${op} ON word BEGIN ${insertWordInvalid(op)} END`,
+			)
+			.concat(
+				`CREATE TRIGGER docUpdate AFTER UPDATE OF lang ON doc BEGIN ${insertWordInvalid("UPDATE")} END`,
+			)
+			.join(";\n"),
+	);
 // Nice dolt feature to not version certain tables.
 export const dolt_ignore = v
 	.object({
