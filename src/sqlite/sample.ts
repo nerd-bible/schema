@@ -12,21 +12,19 @@ export function openDb(rmExisting = false): Db {
 	db.function("stemmer", { deterministic: true }, functions.stemmer);
 	db.function("spanContains", { deterministic: true }, functions.spanContains);
 	return {
-		exec: (sql: string) => db.exec(sql),
-		run: (sql: string) => db.prepare(sql, { readBigInts: true }).all(),
+		exec: async (sql: string) => db.exec(sql),
+		run: async (sql: string) => db.prepare(sql, { readBigInts: true }).all(),
 	};
 }
 
 if (import.meta.main) {
 	const db = openDb(true);
+	console.log(await db.run("select sqlite_version();"));
 
-	ingest.schema(db);
-	console.log(db.run("select sqlite_version();"));
-	db.exec("begin;");
-	ingest.documents(db, sample.gen);
-	ingest.documents(db, sample.exo);
-	db.exec("end;analyze;");
-	// Test triggers
-	// db.exec("update word set id=180 where doc=2 and id=172");
-	validate(db);
+	await ingest.schema(db);
+	await db.exec("begin;");
+	await ingest.documents(db, sample.gen);
+	await ingest.documents(db, sample.exo);
+	await db.exec("end;analyze;");
+	await validate(db);
 }

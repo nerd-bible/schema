@@ -43,7 +43,7 @@ async function parseTag(b: Builder, tag: Content[number]) {
 		case "pn": {
 			hasher.reset();
 			await hasher.any(tag.children);
-			b.pushNote({ id: hasher.bigint63(), lang: "eng", name: "Note" });
+			b.pushNote({ id: hasher.bigint63(), lang: "eng" });
 			for (const t of tag.children) await parseTag(b, t);
 			b.docIndex = 0;
 			break;
@@ -59,7 +59,7 @@ async function sampleDocument(id: Book, content: Content) {
 		lang: "eng",
 		book: id,
 		code: "BSB",
-		name: "Berean Standard Bible (excerpt)",
+		title: id === "gen" ? "Genesis" : "Exodus",
 		published: new Date("2025-12-23"),
 	});
 	for (const t of content) await parseTag(b, t);

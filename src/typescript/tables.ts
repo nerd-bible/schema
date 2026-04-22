@@ -13,12 +13,12 @@ const book = v.enum(ref.book.ids); // if scripture
 export type Book = v.Output<typeof book>;
 
 // A namespace for all other tables to allow layering without branching.
-export const doc = v.object({ id, lang }).extendPartial({ name: v.string() });
+export const doc = v.object({ id, lang }).extendPartial({ title: v.string() });
 export type Doc = v.Output<typeof doc>;
 export const docTag = v
 	.object({ doc: docId, tag: v.string() })
 	.extendPartial({ data: v.any() })
-	.register("extra", "CREATE INDEX docTagTag ON docTag(tag, data)");
+	.register("extra", "CREATE INDEX IF NOT EXISTS docTagTag ON docTag(tag, data)");
 export type DocTag = v.Output<typeof docTag>;
 export const scripture = v
 	.object({
@@ -53,7 +53,7 @@ export const note = v
 		"table",
 		"FOREIGN KEY (doc, highlight) REFERENCES highlight(doc, id)",
 	)
-	.register("extra", "CREATE INDEX noteDoc ON note(ref, refStart);");
+	.register("extra", "CREATE INDEX IF NOT EXISTS noteDoc ON note(ref, refStart);");
 export type Note = v.Output<typeof note>;
 export const xref = v
 	.object({
@@ -84,7 +84,7 @@ export const word = v
 	.object({ doc: docId, id: v.bigint() })
 	.extendPartial({ lang: v.string(), text: v.string() })
 	.register("table", "PRIMARY KEY (doc, id)")
-	.register("extra", "CREATE INDEX wordLangText ON word(lang, text)");
+	.register("extra", "CREATE INDEX IF NOT EXISTS wordLangText ON word(lang, text)");
 export type Word = v.Output<typeof word>;
 export const mark = v
 	.object({
@@ -111,8 +111,8 @@ export const mark = v
 	.register(
 		"extra",
 		[
-			"CREATE INDEX markStart ON mark(start, tag)",
-			"CREATE INDEX markEnd ON mark(end, tag)",
+			"CREATE INDEX IF NOT EXISTS markStart ON mark(start, tag)",
+			"CREATE INDEX IF NOT EXISTS markEnd ON mark(end, tag)",
 		].join(";\n"),
 	);
 export type Mark = v.Output<typeof mark>;
@@ -147,8 +147,8 @@ export const wordSearch = v
 	.register(
 		"extra",
 		[
-			"CREATE INDEX wordSearchPos ON wordSearch(pos)",
-			"CREATE INDEX wordSearchStem ON wordSearch(stem)",
+			"CREATE INDEX IF NOT EXISTS wordSearchPos ON wordSearch(pos)",
+			"CREATE INDEX IF NOT EXISTS wordSearchStem ON wordSearch(stem)",
 		].join(";\n"),
 	);
 export type WordSearch = v.Output<typeof wordSearch>;
@@ -166,20 +166,10 @@ export const wordSearchInvalid = v
 		["INSERT", "DELETE", "UPDATE"]
 			.map(
 				(op) =>
-					`CREATE TRIGGER word${op} AFTER ${op} ON word BEGIN ${insertWordInvalid(op)} END`,
+					`CREATE TRIGGER IF NOT EXISTS word${op} AFTER ${op} ON word BEGIN ${insertWordInvalid(op)} END`,
 			)
 			.concat(
-				`CREATE TRIGGER docUpdate AFTER UPDATE OF lang ON doc BEGIN ${insertWordInvalid("UPDATE")} END`,
+				`CREATE TRIGGER IF NOT EXISTS docUpdate AFTER UPDATE OF lang ON doc BEGIN ${insertWordInvalid("UPDATE")} END`,
 			)
 			.join(";\n"),
-	);
-// Nice dolt feature to not version certain tables.
-export const dolt_ignore = v
-	.object({
-		pattern: v.string().register("col", "PRIMARY KEY"),
-		ignored: v.boolean(),
-	})
-	.register(
-		"extra",
-		"INSERT INTO dolt_ignore VALUES ('wordSearch', 1), ('wordSearchInvalid', 1)",
 	);

@@ -5,14 +5,14 @@ import { ingest } from "./index.ts";
 
 // TODO: some language normalization (contractions, numbers, abbreviations, spelling)
 // https://github.com/shelfio/text-normalizer/blob/master/src/english-mapping.ts
-export function validate(db: Db) {
-	const invalid = db.run(
+export async function validate(db: Db) {
+	const invalid = await db.run(
 		"select id, lang from wordSearchInvalid join doc on doc.id = doc",
 	);
 
 	for (const { id: docId, lang: docLang } of invalid) {
 		const wordSearch: WordSearch[] = [];
-		const words = db.run(`select id, text, lang from word where doc=${docId}`);
+		const words = await db.run(`select id, text, lang from word where doc=${docId}`);
 		let i = 0n;
 		for (const { id: wordId, text, lang: wordLang } of words) {
 			const lang = wordLang ?? docLang;
@@ -30,7 +30,7 @@ export function validate(db: Db) {
 				});
 			}
 		}
-		ingest.rows(db, "wordSearch", wordSearch);
-		db.exec(`delete from wordSearchInvalid where doc=${docId}`);
+		await ingest.rows(db, "wordSearch", wordSearch);
+		await db.exec(`delete from wordSearchInvalid where doc=${docId}`);
 	}
 }

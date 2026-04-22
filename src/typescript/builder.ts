@@ -97,7 +97,7 @@ export class Builder {
 		this.docs.push({
 			id: doc.id ?? builtin64(),
 			lang: doc.lang,
-			name: doc.name,
+			title: doc.title,
 		});
 		this.docIndex = this.docs.length - 1;
 	}
@@ -159,7 +159,7 @@ export class Builder {
 		let i = 0;
 		for (const m of text.matchAll(bcv)) {
 			tokenizeSpan(i, m.index);
-			this.startMark("ref", { book: m[1], chapter: +m[2], verse: +m[3] });
+			this.startMark("ref", { book: ref.book.fromEnglish(m[1]), chapter: +m[2], verse: +m[3] });
 			const end = m.index + m[0].length;
 			this.pushWord(text.substring(m.index, end), "r");
 			this.endMark("ref");

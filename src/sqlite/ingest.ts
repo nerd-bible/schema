@@ -29,11 +29,11 @@ export const serialize = {
 };
 
 export type Db = {
-	exec(query: string): void;
-	run(query: string): Record<string, any>[];
+	exec(query: string): Promise<void>;
+	run(query: string): Promise<Record<string, any>[]>;
 };
 
-export function schema(db: Db) {
+export async function schema(db: Db) {
 	for (const k in tables) {
 		const sql = createTableToSqlite(k, (tables as any)[k]);
 		// https://dbdiagram.io/d
@@ -43,11 +43,11 @@ export function schema(db: Db) {
 		// 		.replace(/WITHOUT ROWID,?/g, "")
 		// 		.replaceAll("ANY", "BLOB"),
 		// );
-		db.exec(sql);
+		await db.exec(sql);
 	}
 }
 
-export function rows(
+export async function rows(
 	db: Db,
 	table: string,
 	rows?: Record<string, Serializable>[],
@@ -60,7 +60,7 @@ export function rows(
 		const batch = rows.slice(i, i + batchSize);
 		const q = "insert into " + table + serialize.rows(columns, batch) + ";";
 		try {
-			db.exec(q);
+			await db.exec(q);
 		} catch (err) {
 			console.error(table, "batch", i, q.substring(0, 1000));
 			console.error(err);
@@ -69,15 +69,15 @@ export function rows(
 	}
 }
 
-export function documents(db: Db, b: Builder) {
-	rows(db, "doc", b.docs);
-	for (const w of b.docWords.values()) rows(db, "word", w);
-	for (const m of b.docMarks.values()) rows(db, "mark", m);
+export async function documents(db: Db, b: Builder) {
+	await rows(db, "doc", b.docs);
+	for (const w of b.docWords.values()) await rows(db, "word", w);
+	for (const m of b.docMarks.values()) await rows(db, "mark", m);
 
-	rows(db, "docTag", b.docTags);
-	rows(db, "scripture", b.scriptures);
-	rows(db, "outline", b.outlines);
-	rows(db, "highlight", b.highlights);
-	rows(db, "note", b.notes);
-	rows(db, "xref", b.xrefs);
+	await rows(db, "docTag", b.docTags);
+	await rows(db, "scripture", b.scriptures);
+	await rows(db, "outline", b.outlines);
+	await rows(db, "highlight", b.highlights);
+	await rows(db, "note", b.notes);
+	await rows(db, "xref", b.xrefs);
 }

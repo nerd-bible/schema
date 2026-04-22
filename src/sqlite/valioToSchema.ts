@@ -42,7 +42,7 @@ function valioToSqlite(obj: v.Pipe, nullable = false) {
 }
 
 export function createTableToSqlite(name: string, obj: v.ValioObject<any>) {
-	let res = `CREATE TABLE ${name} (\n\t`;
+	let res = `CREATE TABLE IF NOT EXISTS ${name} (\n\t`;
 	let hasPrimaryKey = false;
 
 	for (const key in obj.shape) {
