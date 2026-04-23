@@ -64,6 +64,8 @@ export class Builder {
 	docMarks: Map<bigint, t.Mark[]> = new Map();
 
 	docIndex = 0;
+	chapter = 1;
+	verse = 0;
 
 	get doc() {
 		return this.docs[this.docIndex];
@@ -78,19 +80,11 @@ export class Builder {
 	}
 
 	get wordId() {
-		return BigInt(this.words.length) * 3n;
+		return BigInt(this.words.length) * 3n + 3n;
 	}
 
 	get marks() {
 		return getOrInsert(this.docMarks, this.doc.id, []);
-	}
-
-	get chapter() {
-		return this.marks.findLast((m) => m.tag === "c")?.data ?? 1;
-	}
-
-	get verse() {
-		return this.marks.findLast((m) => m.tag === "v")?.data ?? 1;
 	}
 
 	pushDoc(doc: MakeOptional<t.Doc, "id">) {
@@ -98,6 +92,7 @@ export class Builder {
 			id: doc.id ?? builtin64(),
 			lang: doc.lang,
 			title: doc.title,
+			createdAt: doc.createdAt,
 		});
 		this.docIndex = this.docs.length - 1;
 	}
@@ -108,19 +103,20 @@ export class Builder {
 			doc: this.doc.id,
 			code: doc.code,
 			book: doc.book,
-			published: doc.published,
 			urls: doc.urls,
 		});
 	}
 
 	pushOutline(
 		outline: MakeOptional<t.Outline, "doc" | "scripture" | "chapter" | "verse">,
+		chapter = this.chapter,
+		verse = this.verse + 1
 	) {
 		this.outlines.push({
 			doc: outline.doc ?? this.doc.id,
 			scripture: outline.scripture ?? this.scripture.doc,
-			chapter: this.chapter,
-			verse: this.verse,
+			chapter,
+			verse,
 			level: outline.level,
 			text: outline.text,
 		});
@@ -159,7 +155,11 @@ export class Builder {
 		let i = 0;
 		for (const m of text.matchAll(bcv)) {
 			tokenizeSpan(i, m.index);
-			this.startMark("ref", { book: ref.book.fromEnglish(m[1]), chapter: +m[2], verse: +m[3] });
+			this.startMark("ref", {
+				book: ref.book.fromEnglish(m[1]),
+				chapter: +m[2],
+				verse: +m[3],
+			});
 			const end = m.index + m[0].length;
 			this.pushWord(text.substring(m.index, end), "r");
 			this.endMark("ref");
@@ -170,6 +170,11 @@ export class Builder {
 
 	startMark(tag: t.Mark["tag"], data: t.Mark["data"] = {}) {
 		const marks = this.marks;
+		if (tag === "c") {
+			this.chapter = data;
+			this.verse = 0;
+		}
+		if (tag === "v") this.verse = data;
 		marks.push({ doc: this.doc.id, start: this.wordId - 1n, tag, data });
 	}
 
@@ -187,7 +192,7 @@ export class Builder {
 		const min = (BigInt(approxMin) >> 2n) << 1n;
 		for (const d of this.docs) {
 			const words = this.docWords.get(d.id)!;
-			const approxInc = Math.floor(-approxMin / (words.length - 1));
+			const approxInc = Math.floor(-approxMin / (words.length * 3 - 1));
 			const inc = BigInt(approxInc);
 			docMapFns.set(d.id, (idx: bigint) => {
 				let res = min + inc * (idx / 3n);

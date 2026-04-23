@@ -60,7 +60,7 @@ async function sampleDocument(id: Book, content: Content) {
 		book: id,
 		code: "BSB",
 		title: id === "gen" ? "Genesis" : "Exodus",
-		published: new Date("2025-12-23"),
+		createdAt: new Date("2025-12-23"),
 	});
 	for (const t of content) await parseTag(b, t);
 	return b.finalize();

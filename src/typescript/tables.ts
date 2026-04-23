@@ -13,12 +13,17 @@ const book = v.enum(ref.book.ids); // if scripture
 export type Book = v.Output<typeof book>;
 
 // A namespace for all other tables to allow layering without branching.
-export const doc = v.object({ id, lang }).extendPartial({ title: v.string() });
+export const doc = v
+	.object({ id, lang })
+	.extendPartial({ createdAt: v.date(), title: v.string() });
 export type Doc = v.Output<typeof doc>;
 export const docTag = v
 	.object({ doc: docId, tag: v.string() })
 	.extendPartial({ data: v.any() })
-	.register("extra", "CREATE INDEX IF NOT EXISTS docTagTag ON docTag(tag, data)");
+	.register(
+		"extra",
+		"CREATE INDEX IF NOT EXISTS docTagTag ON docTag(tag, data)",
+	);
 export type DocTag = v.Output<typeof docTag>;
 export const scripture = v
 	.object({
@@ -26,7 +31,7 @@ export const scripture = v
 		book,
 		code: v.string(),
 	})
-	.extendPartial({ published: v.date(), urls: v.array(v.string()) });
+	.extendPartial({ urls: v.array(v.string()) });
 export type Scripture = v.Output<typeof scripture>;
 export const outline = v.object({
 	doc: docId,
@@ -53,7 +58,10 @@ export const note = v
 		"table",
 		"FOREIGN KEY (doc, highlight) REFERENCES highlight(doc, id)",
 	)
-	.register("extra", "CREATE INDEX IF NOT EXISTS noteDoc ON note(ref, refStart);");
+	.register(
+		"extra",
+		"CREATE INDEX IF NOT EXISTS noteDoc ON note(ref, refStart);",
+	);
 export type Note = v.Output<typeof note>;
 export const xref = v
 	.object({
@@ -84,7 +92,10 @@ export const word = v
 	.object({ doc: docId, id: v.bigint() })
 	.extendPartial({ lang: v.string(), text: v.string() })
 	.register("table", "PRIMARY KEY (doc, id)")
-	.register("extra", "CREATE INDEX IF NOT EXISTS wordLangText ON word(lang, text)");
+	.register(
+		"extra",
+		"CREATE INDEX IF NOT EXISTS wordLangText ON word(lang, text)",
+	);
 export type Word = v.Output<typeof word>;
 export const mark = v
 	.object({
