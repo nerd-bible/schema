@@ -100,7 +100,7 @@ export type Word = v.Output<typeof word>;
 export const mark = v
 	.object({
 		doc: docId,
-		start: v.bigint(), // inclusive
+		start: v.bigint(),
 		tag: v.enum([
 			"p", // paragraph
 			"c", // chapter
@@ -115,16 +115,10 @@ export const mark = v
 			"ref", // bcv
 		]),
 	})
-	.extendPartial({
-		data: v.any(),
-		end: v.bigint(), // inclusive
-	})
+	.extendPartial({ data: v.any(), end: v.bigint() })
 	.register(
 		"extra",
-		[
-			"CREATE INDEX IF NOT EXISTS markStart ON mark(start, tag)",
-			"CREATE INDEX IF NOT EXISTS markEnd ON mark(end, tag)",
-		].join(";\n"),
+		"CREATE INDEX IF NOT EXISTS markStart ON mark(doc, tag, start)",
 	);
 export type Mark = v.Output<typeof mark>;
 

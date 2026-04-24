@@ -234,7 +234,7 @@ export class Builder {
 	}
 
 	finalize(loadFactor = 0.8): this {
-		this.remapWordIds(loadFactor);
+		// this.remapWordIds(loadFactor);
 		return this;
 	}
 }
