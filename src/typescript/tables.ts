@@ -90,37 +90,57 @@ export type Xref = v.Output<typeof xref>;
 // Document content
 export const word = v
 	.object({ doc: docId, id: v.bigint() })
-	.extendPartial({ lang: v.string(), text: v.string() })
+	.extendPartial({ text: v.string() })
 	.register("table", "PRIMARY KEY (doc, id)")
 	.register(
 		"extra",
 		"CREATE INDEX IF NOT EXISTS wordLangText ON word(lang, text)",
 	);
 export type Word = v.Output<typeof word>;
-export const mark = v
+export const wordTag = v
 	.object({
 		doc: docId,
-		start: v.bigint(),
+		word: v.bigint(),
 		tag: v.enum([
 			"p", // paragraph
 			"c", // chapter
 			"v", // verse
-			"ol", // ordered list
-			"ul", // unordered list
-			"li", // list item
-			"q", // quote
-			"h", // heading
-			"em", // emphasis (italic)
-			"strong", // strong (bold)
-			"ref", // bcv
+			"r", // bcv or (doc,word)
+			"l", // language if not document's language
 		]),
 	})
-	.extendPartial({ data: v.any(), end: v.bigint() })
+	.extendPartial({ data: v.any() })
+	.register("table", "PRIMARY KEY (doc, word, tag)");
+export type WordTag = v.Output<typeof wordTag>;
+export const mark = v
+	.object({
+		doc: docId,
+		start: v.bigint(),
+		end: v.bigint(),
+		tag: v.enum([
+			"q", // quote
+			"em", // emphasis (italic)
+			"h", // heading
+			"strong", // strong (bold)
+			"span", // arbitrary
+		]),
+	})
+	.extendPartial({ data: v.any() })
 	.register(
 		"extra",
 		"CREATE INDEX IF NOT EXISTS markStart ON mark(doc, tag, start)",
 	);
 export type Mark = v.Output<typeof mark>;
+export const list = v.object({
+	doc: docId,
+	start: v.bigint(),
+	end: v.bigint(),
+});
+export const listItem = v.object({
+	doc: docId,
+	start: v.bigint(),
+	level: v.number(),
+});
 
 // Search.
 // This caching table is needed because:
