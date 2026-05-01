@@ -25,7 +25,9 @@
 	},
 	"dependencies": {
 		"@nerd-bible/ref": "^0.1.4",
-		"@nerd-bible/valio": "^0.1.19"
+		"@nerd-bible/valio": "^0.1.19",
+		"prosemirror-model": "^1.25.4",
+		"prosemirror-transform": "^1.12.0"
 	},
 	"devDependencies": {
 		"@nerd-bible/config": "^0.1.9"
