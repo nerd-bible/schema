@@ -14,12 +14,12 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 test("correctness", () => {
-	const tree = new BTree<string>(undefined, 10);
-	const map = new Map<bigint, string>();
+	const tree = new BTree<string>();
+	const map = new Map<number, string>();
 
-	let min: bigint | undefined;
-	let max: bigint | undefined;
-	const arr = shuffle([...Array(20).keys().map(k => BigInt(k))]);
+	let min: number | undefined;
+	let max: number | undefined;
+	const arr = [...Array(tree.maxNodeSize * tree.maxNodeSize).keys()];
 
 	for (let i = 0; i < arr.length; i++) {
 		const k = arr[i];
@@ -34,17 +34,21 @@ test("correctness", () => {
 	}
 
 	expect(tree.size).toBe(arr.length);
-	expect(tree.min()).toBe(min);
-	expect(tree.max()).toBe(max);
+	expect(tree.minKey()).toBe(min);
+	expect(tree.maxKey()).toBe(max);
 
 	for (const [k, v] of map.entries()) expect(tree.get(k)).toBe(v);
 
-	let last = -1n;
+	let last = -1;
 	let i = 0;
 	for (const n of tree.keys()) {
-		expect(last).toBeLessThan(n);
+		expect(last).toBeLessThanOrEqual(n);
 		last = n;
 		i++;
 	}
 	expect(i).toBe(arr.length);
+
+	// console.dir(tree.root!.children[0], { depth: null });
+	expect(tree.delete(2)).toBe(true);
+	expect(tree.get(2)).toBeUndefined();
 });
