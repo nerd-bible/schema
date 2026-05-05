@@ -15,10 +15,217 @@ type NodeGenerator<K extends Comparable, V extends Length> = Generator<{
 	end: number;
 }>;
 
-export class BTree<K extends Comparable, V extends Length> {
-	root = new Internal<K, V>([new Leaf<K, V>()], []);
+abstract class Node<K extends Comparable, V extends Length> {
+	_values: (Internal<K, V> | Leaf<K, V>)[] | V[];
+	_keys: K[];
+	length: number;
+
+	constructor(
+		values: (Internal<K, V> | Leaf<K, V>)[] | V[],
+		keys: K[],
+		length: number,
+	) {
+		this._values = values;
+		this._keys = keys;
+		this.length = length;
+	}
+
+	abstract get size(): number;
+	abstract minKey(): K;
+	maxKey(): K {
+		return this._keys[this._keys.length - 1];
+	}
+
+	splitRight(idx: number): this {
+		const values = this._values.splice(idx);
+		const keys = this._keys.splice(idx);
+		const res = new ((this instanceof Internal ? Internal : Leaf) as any)(
+			values,
+			keys,
+		);
+		this.length -= res.length;
+		return res;
+	}
+
+	trySplitRight(tree: BTree<K, V>): undefined | this {
+		if (this._values.length > tree.maxNodeSize)
+			return this.splitRight(tree.splitNodeSize);
+	}
+
+	getPos(pos: number): { key: K; value: V; offset: number } | undefined {
+		if (pos > this.length) return;
+		for (let i = 0; i < this._values.length; i++) {
+			const value = this._values[i];
+			if (pos - value.length < 0) {
+				const value = this._values[i];
+				if (value instanceof Internal || value instanceof Leaf)
+					return value.getPos(pos);
+				return { key: this._keys[i], value, offset: pos };
+			}
+			pos -= value.length;
+		}
+	}
+}
+
+export class Leaf<K extends Comparable, V extends Length> extends Node<K, V> {
+	declare _values: V[];
+
+	constructor(
+		values: V[] = [],
+		keys: K[] = [],
+		length = values.reduce((acc, c) => acc + c.length, 0),
+	) {
+		super(values, keys, length);
+	}
+
+	get size(): number {
+		return this._values.length;
+	}
+
+	minKey(): K {
+		return this._keys[0];
+	}
+
+	get(key: K, tree: BTree<K, V>): V | undefined {
+		const idx = tree.indexOf(this, key, -1);
+		return this._values[idx];
+	}
+
+	set(key: K, value: V, tree: BTree<K, V>): Leaf<K, V> | void {
+		const idx = tree.indexOf(this, key, 0);
+
+		this._keys.splice(idx, 0, key);
+		this._values.splice(idx, 0, value);
+		this.length += value.length;
+		return this.trySplitRight(tree);
+	}
+
+	delete(key: K, tree: BTree<K, V>): number {
+		const idx = tree.indexOf(this, key, -1);
+		if (idx !== -1) {
+			this._keys.splice(idx, 1);
+			const res = this._values[idx].length;
+			this.length -= res;
+			this._values.splice(idx, 1);
+			return res;
+		}
+		return 0;
+	}
+
+	*items(low: K, high: K, tree: BTree<K, V>): NodeGenerator<K, V> {
+		const start = tree.indexOf(this, low, 0);
+		const end = Math.min(this._keys.length - 1, tree.indexOf(this, high, 0));
+		yield { node: this, start, end };
+	}
+}
+
+export class Internal<K extends Comparable, V extends Length> extends Node<
+	K,
+	V
+> {
+	declare _values: (Internal<K, V> | Leaf<K, V>)[];
 	#size = 0;
 
+	constructor(
+		values: (Internal<K, V> | Leaf<K, V>)[],
+		keys: K[] = values.map((c) => c.maxKey()),
+		length = values.reduce((acc, c) => acc + c.length, 0),
+	) {
+		super(values, keys, length);
+		this.#size = values.reduce((acc, c) => acc + c.size, 0);
+	}
+
+	get size(): number {
+		return this.#size;
+	}
+
+	minKey(): K {
+		return this._values[0].minKey();
+	}
+
+	get(key: K, tree: BTree<K, V>): V | undefined {
+		const idx = tree.indexOf(this, key, 0);
+		return this._values[idx].get(key, tree);
+	}
+
+	set(key: K, value: V, tree: BTree<K, V>): Internal<K, V> | void {
+		let idx = tree.indexOf(this, key, 0);
+		idx = Math.min(idx, this._values.length - 1);
+		const child = this._values[idx];
+
+		const result = child.set(key, value, tree);
+		this._keys[idx] = child.maxKey();
+		this.length += value.length;
+		this.#size += 1;
+		if (!result) return;
+
+		this._values.splice(idx + 1, 0, result);
+		this._keys.splice(idx + 1, 0, result.maxKey());
+		const res = this.trySplitRight(tree);
+		if (res && this instanceof BTree) {
+			const old = new Internal<K, V>(this._values, this._keys, this.length);
+			this._values = [old, res];
+			this._keys = [old.maxKey(), res.maxKey()];
+			this.length = old.length + res.length;
+			this.#size = old.size + res.size;
+		}
+		return res;
+	}
+
+	delete(key: K, tree: BTree<K, V>): number {
+		const idx = tree.indexOf(this, key, 0);
+		if (idx === -1) return 0;
+
+		const child = this._values[idx];
+		const result = child.delete(key, tree);
+		if (result) {
+			this.length -= result;
+			this.#size -= 1;
+			this._keys[idx] = child.maxKey();
+			if (child._values.length < tree.minNodeSize)
+				this.tryMergeLeft(idx, tree) || this.tryMergeLeft(idx + 1, tree);
+		}
+
+		return result;
+	}
+
+	tryMergeLeft(idx: number, tree: BTree<K, V>): boolean {
+		const child = this._values[idx];
+		const left = this._values[idx - 1];
+		if (child && left?._values.length <= tree.minNodeSize) {
+			// Merge `child` into `left` and then remove it from `this`
+			let same = false;
+			if (left instanceof Leaf && child instanceof Leaf) {
+				left._values.push(...child._values);
+				same = true;
+			} else if (left instanceof Internal && child instanceof Internal) {
+				left._values.push(...child._values);
+				left.#size += child.#size;
+				same = true;
+			}
+			if (same) {
+				left._keys.push(...child._keys);
+				left.length += child.length;
+				this._values.splice(idx, 1);
+				this._keys.splice(idx - 1, 1);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	*items(low: K, high: K, tree: BTree<K, V>): NodeGenerator<K, V> {
+		const start = tree.indexOf(this, low, 0);
+		const end = tree.indexOf(this, high, 0);
+		for (let i = start; i <= end && i < this._values.length; i++)
+			yield* this._values[i].items(low, high, tree);
+	}
+}
+
+export class BTree<K extends Comparable, V extends Length> extends Internal<
+	K,
+	V
+> {
 	indexOf: (
 		ctx: Leaf<K, V> | Internal<K, V>,
 		key: K,
@@ -30,10 +237,11 @@ export class BTree<K extends Comparable, V extends Length> {
 
 	constructor(
 		indexOf = (ctx: Leaf<K, V> | Internal<K, V>, key: K, failXor: number) =>
-			binarySearch(ctx.keys, key, comparator, failXor),
+			binarySearch(ctx._keys, key, comparator, failXor),
 		maxNodeSize = 32,
 		splitNodeSize = Math.floor(maxNodeSize * 0.8),
 	) {
+		super([new Leaf<K, V>()]);
 		this.indexOf = indexOf;
 		this.maxNodeSize = maxNodeSize;
 		this.splitNodeSize = splitNodeSize;
@@ -44,243 +252,31 @@ export class BTree<K extends Comparable, V extends Length> {
 	// static bulkLoad(): BTree {
 	// }
 
-	get size(): number {
-		return this.#size;
-	}
-
-	get length(): number {
-		return this.root.length;
-	}
-
-	minKey(): K | undefined {
-		return this.root.minKey();
-	}
-
-	maxKey(): K | undefined {
-		return this.root.maxKey();
-	}
-
 	get(key: K): V | undefined {
-		return this.root.get(key, this);
-	}
-
-	getPos(pos: number): { value: V; offset: number } | undefined {
-		return this.root.getPos(pos);
+		return super.get(key, this);
 	}
 
 	set(key: K, value: V): void {
-		const split = this.root.set(key, value, this);
-		if (split) this.root = new Internal<K, V>([this.root, split]);
-		this.#size++;
+		super.set(key, value, this);
 	}
 
 	delete(key: K): number {
-		const res = this.root.delete(key, this) ?? false;
-		if (res) this.#size--;
-		return res;
+		return super.delete(key, this);
 	}
 
 	*items(low = this.minKey(), high = this.maxKey()): NodeGenerator<K, V> {
-		if (low != null && high != null) yield* this.root.items(low, high, this);
+		if (low != null && high != null) yield* super.items(low, high, this);
 	}
 
 	*keys(low = this.minKey(), high = this.maxKey()): Generator<K> {
 		for (const { node, start, end } of this.items(low, high)) {
-			for (let i = start; i <= end; i++) yield node.keys[i];
+			for (let i = start; i <= end; i++) yield node._keys[i];
 		}
 	}
 
 	*values(low = this.minKey(), high = this.maxKey()): Generator<V> {
 		for (const { node, start, end } of this.items(low, high)) {
-			for (let i = start; i <= end; i++) yield node.values[i];
+			for (let i = start; i <= end; i++) yield node._values[i];
 		}
-	}
-}
-
-abstract class Node<K extends Comparable, V extends Length> {
-	values: (Internal<K, V> | Leaf<K, V>)[] | V[];
-	keys: K[];
-	length: number;
-
-	constructor(
-		values: (Internal<K, V> | Leaf<K, V>)[] | V[],
-		keys: K[],
-		length: number,
-	) {
-		this.values = values;
-		this.keys = keys;
-		this.length = length;
-	}
-
-	get size(): number {
-		return this.values.length;
-	}
-
-	abstract minKey(): K;
-	maxKey(): K {
-		return this.keys[this.keys.length - 1];
-	}
-
-	splitRight(idx: number): this {
-		const keys = this.keys.splice(idx);
-		const values = this.values.splice(idx);
-		const res = new (this.constructor as any)(values, keys);
-		this.length -= res.length;
-		return res;
-	}
-
-	trySplitRight(tree: BTree<K, V>): undefined | this {
-		if (this.size > tree.maxNodeSize)
-			return this.splitRight(tree.splitNodeSize);
-	}
-
-	getPos(pos: number): { key: K; value: V; offset: number } | undefined {
-		if (pos > this.length) return;
-		for (let i = 0; i < this.size; i++) {
-			const value = this.values[i];
-			if (pos - value.length < 0) {
-				const value = this.values[i];
-				if (value instanceof Internal || value instanceof Leaf)
-					return value.getPos(pos);
-				return { key: this.keys[i], value, offset: pos };
-			}
-			pos -= value.length;
-		}
-	}
-}
-
-export class Internal<K extends Comparable, V extends Length> extends Node<
-	K,
-	V
-> {
-	declare values: (Internal<K, V> | Leaf<K, V>)[];
-
-	constructor(
-		values: Internal<K, V>[] | Leaf<K, V>[],
-		keys: K[] = values.map((c) => c.maxKey()),
-		length = values.reduce((acc, c) => acc + c.length, 0),
-	) {
-		super(values, keys, length);
-	}
-
-	minKey(): K {
-		return this.values[0].minKey();
-	}
-
-	get(key: K, tree: BTree<K, V>): V | undefined {
-		const idx = tree.indexOf(this, key, 0);
-		return this.values[idx].get(key, tree);
-	}
-
-	set(key: K, value: V, tree: BTree<K, V>): undefined | Internal<K, V> {
-		let idx = tree.indexOf(this, key, 0);
-		idx = Math.min(idx, this.values.length - 1);
-		const child = this.values[idx];
-
-		const result = child.set(key, value, tree);
-		this.keys[idx] = child.maxKey();
-		this.length += value.length;
-		if (!result) return;
-
-		this.values.splice(idx + 1, 0, result);
-		this.keys.splice(idx + 1, 0, result.maxKey());
-		const res = this.trySplitRight(tree);
-		if (res) this.length -= res.length;
-		return res;
-	}
-
-	delete(key: K, tree: BTree<K, V>): number {
-		const idx = tree.indexOf(this, key, 0);
-		if (idx === -1) return 0;
-
-		const child = this.values[idx];
-		const result = child.delete(key, tree);
-		if (result) {
-			this.length -= result;
-			this.keys[idx] = child.maxKey();
-			if (child.size < tree.minNodeSize)
-				this.tryMergeLeft(idx, tree) || this.tryMergeLeft(idx + 1, tree);
-		}
-
-		return result;
-	}
-
-	tryMergeLeft(idx: number, tree: BTree<K, V>): boolean {
-		const child = this.values[idx];
-		const left = this.values[idx - 1];
-		if (child && left?.size <= tree.minNodeSize) {
-			// Merge `child` into `left` and then remove it from `this`
-			let same = false;
-			if (left instanceof Leaf && child instanceof Leaf) {
-				left.values.push(...child.values);
-				same = true;
-			} else if (left instanceof Internal && child instanceof Internal) {
-				left.values.push(...child.values);
-				same = true;
-			}
-			if (same) {
-				left.keys.push(...child.keys);
-				left.length += child.length;
-				this.values.splice(idx, 1);
-				this.keys.splice(idx - 1, 1);
-				return true;
-			}
-		}
-		return false;
-	}
-
-	*items(low: K, high: K, tree: BTree<K, V>): NodeGenerator<K, V> {
-		const start = tree.indexOf(this, low, 0);
-		const end = tree.indexOf(this, high, 0);
-		for (let i = start; i <= end && i < this.size; i++)
-			yield* this.values[i].items(low, high, tree);
-	}
-}
-
-export class Leaf<K extends Comparable, V extends Length> extends Node<K, V> {
-	declare values: V[];
-
-	constructor(
-		values: V[] = [],
-		keys: K[] = [],
-		length = values.reduce((acc, c) => acc + c.length, 0),
-	) {
-		super(values, keys, length);
-	}
-
-	minKey(): K {
-		return this.keys[0];
-	}
-
-	get(key: K, tree: BTree<K, V>): V | undefined {
-		const idx = tree.indexOf(this, key, -1);
-		return this.values[idx];
-	}
-
-	set(key: K, value: V, tree: BTree<K, V>): undefined | Leaf<K, V> {
-		const idx = tree.indexOf(this, key, 0);
-
-		this.keys.splice(idx, 0, key);
-		this.values.splice(idx, 0, value);
-		this.length += value.length;
-		return this.trySplitRight(tree);
-	}
-
-	delete(key: K, tree: BTree<K, V>): number {
-		const idx = tree.indexOf(this, key, -1);
-		if (idx !== -1) {
-			this.keys.splice(idx, 1);
-			const res = this.values[idx].length;
-			this.length -= res;
-			this.values.splice(idx, 1);
-			return res;
-		}
-		return 0;
-	}
-
-	*items(low: K, high: K, tree: BTree<K, V>): NodeGenerator<K, V> {
-		const start = tree.indexOf(this, low, 0);
-		const end = Math.min(this.keys.length - 1, tree.indexOf(this, high, 0));
-		yield { node: this, start, end };
 	}
 }

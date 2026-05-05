@@ -53,7 +53,6 @@ test("bigint keys", () => {
 	expect(i).toBe(arr.length);
 
 	for (const k of map.keys()) expect(tree.delete(k)).toBeGreaterThan(0);
-	// console.dir(tree.root.children, { depth: null });
 	expect(tree.delete(2n)).toBe(0);
 	expect(tree.get(2n)).toBeUndefined();
 });
@@ -79,7 +78,7 @@ test("getpos", () => {
 	expect(tree.getPos(2)).toEqual({ key: 2n, value: " the", offset: 0 });
 	expect(tree.getPos(21)).toEqual({ key: 5n, value: " created", offset: 1 });
 
-	console.dir(tree.root, { depth: null });
+	// console.dir(tree, { depth: null });
 	expect(tree.delete(2n)).toBe(map.get(2n)!.length);
 
 	expect(tree.getPos(0)).toEqual({ key: 1n, value: "in", offset: 0 });
