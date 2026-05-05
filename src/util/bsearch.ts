@@ -12,7 +12,7 @@
 export function binarySearch<A, B>(
 	haystack: ArrayLike<A>,
 	needle: B,
-	comparator: (a: A, b: B, index: number, haystack: ArrayLike<A>) => number | bigint,
+	comparator: (a: A, b: B, index: number, haystack: ArrayLike<A>) => number,
 	failXor = -1,
 	fromIdx = 0,
 	toIdx = haystack.length - 1,
@@ -25,7 +25,7 @@ export function binarySearch<A, B>(
 	//assert(toIdx >= fromIdx && toIdx < haystack.length)
 
 	let mid: number;
-	let cmp: number | bigint;
+	let cmp: number;
 	while (fromIdx <= toIdx) {
 		// `low + high >>> 1` fails for array lengths > 2^31
 		// because `>>>` converts to int32. This works on the

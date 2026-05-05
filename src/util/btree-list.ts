@@ -9,6 +9,23 @@ export interface ListItem {
 	slice(start?: number, end?: number): this;
 }
 
+/**
+ * A balanced tree that supports insertion and lookup by list position:
+ * - Nodes have an extra `length` field.
+ * - Keys are lengths of values and can be negative for deletions.
+ * - Grow only for simpler implementation.
+ */
+export class BTreeList<V extends ListItem> extends BTree<
+	number,
+	V,
+	LeafStat<V>,
+	InternalStat<V, any>
+> {
+	constructor(
+		maxNodeSize = 1 << 8,
+		splitNodeSize = Math.floor(maxNodeSize * 0.8),
+	) {
+		super(
 			(ctx, pos) => {
 				const lengths = ctx.keys;
 				let endPos = 0;
@@ -19,6 +36,18 @@ export interface ListItem {
 				}
 				return { idx: i, offset: pos - endPos + (lengths[i] ?? 0) };
 			},
+			maxNodeSize,
+			splitNodeSize,
+			(keys?: number[], values?: V[]) => new LeafStat<V>(keys, values),
+			(children: any[], keys?: number[]) =>
+				new InternalStat<V, any>(children, keys),
+		);
+	}
+
+	get length(): number {
+		return this.root?.length ?? 0;
+	}
+}
 
 export class LeafStat<V extends ListItem>
 	extends Leaf<number, V>

@@ -14,12 +14,16 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 test("correctness", () => {
-	const tree = new BTree<string>();
-	const map = new Map<number, string>();
+	const tree = new BTree<bigint, string>(undefined, 4);
+	const map = new Map<bigint, string>();
 
-	let min: number | undefined;
-	let max: number | undefined;
-	const arr = [...Array(tree.maxNodeSize * tree.maxNodeSize).keys()];
+	let min: bigint | undefined;
+	let max: bigint | undefined;
+	const arr = shuffle([
+		...Array(tree.maxNodeSize * tree.maxNodeSize - 1)
+			.keys()
+			.map(BigInt),
+	]);
 
 	for (let i = 0; i < arr.length; i++) {
 		const k = arr[i];
@@ -39,7 +43,7 @@ test("correctness", () => {
 
 	for (const [k, v] of map.entries()) expect(tree.get(k)).toBe(v);
 
-	let last = -1;
+	let last = -1n;
 	let i = 0;
 	for (const n of tree.keys()) {
 		expect(last).toBeLessThanOrEqual(n);
@@ -48,7 +52,8 @@ test("correctness", () => {
 	}
 	expect(i).toBe(arr.length);
 
-	// console.dir(tree.root!.children[0], { depth: null });
-	expect(tree.delete(2)).toBe(true);
-	expect(tree.get(2)).toBeUndefined();
+	for (const k of map.keys()) expect(tree.delete(k)).toBe(true);
+	// console.dir(tree.root.children, { depth: null });
+	expect(tree.delete(2n)).toBe(false);
+	expect(tree.get(2n)).toBeUndefined();
 });
