@@ -290,35 +290,3 @@ export class Leaf<K extends Comparable, V extends Length> {
 		yield { node: this, start, end };
 	}
 }
-
-/** Debug functions that may be tree-shaken. */
-let counter = 0;
-export function toDot(tree: BTree<any, any>): string {
-	let res = "digraph {\n";
-	if (tree.root) res += nodeToDot(tree, "", tree.root);
-	res += "}";
-	return res;
-}
-
-function nodeToDot(
-	tree: BTree<any, any>,
-	fromId: string,
-	node: Internal<any, any> | Leaf<any, any>,
-): string {
-	let res = "";
-
-	const id = `i${counter++}`;
-	const min = JSON.stringify(node.minKey(), null, 2).replaceAll('"', '\\"');
-	const max = JSON.stringify(node.maxKey(), null, 2).replaceAll('"', '\\"');
-	res += `${id}[label="min: ${min}\nmax: ${max}\nsize: ${node.size}"]\n`;
-	if (fromId) res += `${fromId} -> ${id}\n`;
-
-	if (node instanceof Internal) {
-		for (let i = 0; i < node.children.length; i++) {
-			assert(node.children[i], `bad ${i}`);
-			res += nodeToDot(tree, id, node.children[i]);
-		}
-	}
-
-	return res;
-}

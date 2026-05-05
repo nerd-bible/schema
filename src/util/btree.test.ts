@@ -79,10 +79,10 @@ test("getpos", () => {
 	expect(tree.getPos(2)).toEqual({ key: 2n, value: " the", offset: 0 });
 	expect(tree.getPos(21)).toEqual({ key: 5n, value: " created", offset: 1 });
 
-	expect(tree.delete(2n)).toBe(4);
+	expect(tree.delete(2n)).toBe(map.get(2n)!.length);
 
 	// console.dir(tree.root, { depth: null });
 	expect(tree.getPos(0)).toEqual({ key: 1n, value: "in", offset: 0 });
 	expect(tree.getPos(2)).toEqual({ key: 3n, value: " beginning", offset: 0 });
-	expect(tree.length).toBe(expectedLength - 4);
+	expect(tree.length).toBe(expectedLength - map.get(2n)!.length);
 });
