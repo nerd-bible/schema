@@ -13,7 +13,7 @@ function shuffle<T>(arr: T[]): T[] {
 	return arr;
 }
 
-test("correctness", () => {
+test("bigint keys", () => {
 	const tree = new BTree<bigint, string>(undefined, 4);
 	const map = new Map<bigint, string>();
 
@@ -52,8 +52,37 @@ test("correctness", () => {
 	}
 	expect(i).toBe(arr.length);
 
-	for (const k of map.keys()) expect(tree.delete(k)).toBe(true);
+	for (const k of map.keys()) expect(tree.delete(k)).toBeGreaterThan(0);
 	// console.dir(tree.root.children, { depth: null });
-	expect(tree.delete(2n)).toBe(false);
+	expect(tree.delete(2n)).toBe(0);
 	expect(tree.get(2n)).toBeUndefined();
+});
+
+test("getpos", () => {
+	const tree = new BTree<bigint, string>(undefined, 4);
+	const map = new Map<bigint, string>([
+		[5n, " created"],
+		[4n, " God"],
+		[3n, " beginning"],
+		[2n, " the"],
+		[1n, "in"],
+	]);
+
+	for (const [k, v] of map.entries()) tree.set(k, v);
+
+	const expectedLength = map.values().reduce((acc, cur) => acc + cur.length, 0);
+	expect(tree.size).toBe(map.size);
+	expect(tree.length).toBe(expectedLength);
+
+	expect(tree.getPos(0)).toEqual({ key: 1n, value: "in", offset: 0 });
+	expect(tree.getPos(1)).toEqual({ key: 1n, value: "in", offset: 1 });
+	expect(tree.getPos(2)).toEqual({ key: 2n, value: " the", offset: 0 });
+	expect(tree.getPos(21)).toEqual({ key: 5n, value: " created", offset: 1 });
+
+	expect(tree.delete(2n)).toBe(4);
+
+	// console.dir(tree.root, { depth: null });
+	expect(tree.getPos(0)).toEqual({ key: 1n, value: "in", offset: 0 });
+	expect(tree.getPos(2)).toEqual({ key: 3n, value: " beginning", offset: 0 });
+	expect(tree.length).toBe(expectedLength - 4);
 });
