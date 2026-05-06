@@ -143,10 +143,11 @@ export class Leaf<K extends Comparable, V extends Length> extends Node<K, V> {
 		return -1;
 	}
 
-	*items(low: K, high: K, tree: BTree<K, V>): NodeGenerator<K, V> {
-		const start = tree.indexOf(this, low, 0);
-		const end = Math.min(this._keys.length - 1, tree.indexOf(this, high, 0));
-		yield { node: this, start, end };
+	*nodes(low: K, high: K, tree: BTree<K, V>): NodeGenerator<K, V> {
+		let end = tree.indexOf(this, high, -1);
+		if (end > 0) end++;
+		else end ^= -1;
+		yield { node: this, start: tree.indexOf(this, low, 0), end };
 	}
 }
 
@@ -256,7 +257,7 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 		const child = this._values[idx];
 		if (child instanceof Leaf) {
 			const idx2 = tree.indexOf(child, key, 0);
-			if (idx2 > 0 && idx2 < child._values.length - 1) {
+			if (idx2 > 0 && idx2 < child._values.length) {
 				const split = child.splitRight(idx2);
 				this._keys[idx] = child.maxKey();
 				this._keys.splice(idx + 1, 0, split.maxKey());
@@ -267,17 +268,20 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 	}
 
 	mark(low: K, high: K, mark: Mark, tree: BTree<K, V>) {
-		// const start = tree.indexOf(this, low, 0);
-		// const end = Math.min(this._keys.length - 1, tree.indexOf(this, high, 0));
-		// for (let i = start; i <= end; i++)
-		// 	yield* this._values[i].items(low, high, tree);
+		this.split(low, tree);
+		this.split(high, tree);
+		// TODO: mark merger
+		// TODO: try sibling node merger
+		for (const n of this.nodes(low, high, tree)) n.node._marks.push(mark);
 	}
 
-	*items(low: K, high: K, tree: BTree<K, V>): NodeGenerator<K, V> {
+	*nodes(low: K, high: K, tree: BTree<K, V>): NodeGenerator<K, V> {
 		const start = tree.indexOf(this, low, 0);
-		const end = tree.indexOf(this, high, 0);
-		for (let i = start; i <= end && i < this._values.length; i++)
-			yield* this._values[i].items(low, high, tree);
+		let end = tree.indexOf(this, high, -1);
+		if (end > 0) end++;
+		else end ^= -1;
+		for (let i = start; i < end; i++)
+			yield* this._values[i].nodes(low, high, tree);
 	}
 }
 
@@ -372,42 +376,35 @@ export class BTree<K extends Comparable, V extends Length> {
 		return this.root.mark(low, high, mark, this);
 	}
 
-	*items(low = this.minKey(), high = this.maxKey()): NodeGenerator<K, V> {
-		if (low != null && high != null) yield* this.root.items(low, high, this);
-	}
-
 	*keys(low = this.minKey(), high = this.maxKey()): Generator<K> {
-		for (const { node, start, end } of this.items(low, high)) {
-			for (let i = start; i <= end; i++) yield node._keys[i];
+		for (const { node, start, end } of this.root.nodes(low, high, this)) {
+			for (let i = start; i < end; i++) yield node._keys[i];
 		}
 	}
 
 	*values(low = this.minKey(), high = this.maxKey()): Generator<V> {
-		for (const { node, start, end } of this.items(low, high)) {
-			for (let i = start; i <= end; i++) yield node._values[i];
+		for (const { node, start, end } of this.root.nodes(low, high, this)) {
+			for (let i = start; i < end; i++) yield node._values[i];
 		}
 	}
 }
 
-function nodeHeader(n: Node<any, any>): string {
-	let res = `l${pc.dim(n._length)}`;
-	if (n instanceof BTree) res += ` s${pc.dim(n.size)}`;
-	res += " " + JSON.stringify(n._marks);
-	return res;
-}
-
 // For debugging
 export function toString(n: BTree<any, any> | Node<any, any>, depth = 0) {
-	if (n instanceof BTree) return toString(n.root);
-
 	let res = "";
+	if (n instanceof BTree) {
+		res += `l${pc.dim(n.root.length)} s${pc.dim(n.size)}\n`;
+		res += toString(n.root);
+		return res;
+	}
+
 	if (depth > 0) res += "\n";
-	else res += nodeHeader(n) + "\n";
 	res += "\t".repeat(depth);
 	for (let i = 0; i < n._values.length; i++) {
 		const val = n._values[i];
 		if (val instanceof Node) {
-			res += `${pc.blue(n._keys[i] ?? "empty")} ${nodeHeader(n._values[0])}`;
+			res += `${pc.blue(n._keys[i] ?? "empty")} l${pc.dim(n._values[i]._length)}`;
+			res += " " + JSON.stringify(n._values[i]._marks);
 			res += toString(val, depth + 1);
 			if (i !== n._values.length - 1) res += "\n" + "\t".repeat(depth);
 		} else {

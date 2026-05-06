@@ -13,6 +13,13 @@ function shuffle<T>(arr: T[]): T[] {
 	return arr;
 }
 
+function cmp(a: bigint, b: bigint): number {
+	const diff = a - b;
+	if (diff > 0) return 1;
+	if (diff < 0) return -1;
+	return 0;
+}
+
 test("btree set, delete, min, max", () => {
 	const tree = new BTree<bigint, string>(undefined, 4);
 	const map = new Map<bigint, string>();
@@ -42,6 +49,9 @@ test("btree set, delete, min, max", () => {
 	expect(tree.maxKey()).toBe(max);
 
 	for (const [k, v] of map.entries()) expect(tree.get(k)).toBe(v);
+
+	console.log(toString(tree));
+	expect([...tree.keys()].sort(cmp)).toEqual([...map.keys()].sort(cmp));
 
 	let last = -1n;
 	let i = 0;
@@ -74,7 +84,9 @@ test("btree mark", () => {
 	const tree = treeSample();
 
 	console.log(toString(tree));
-	tree.mark(2n, 7n, { tag: "WOW" });
+	tree.mark(5n, 13n, { tag: "WOW" });
+	// tree.mark(5n, 10n, { tag: "WOW" });
+	console.log(toString(tree));
 });
 
 test("btree getpos", () => {
