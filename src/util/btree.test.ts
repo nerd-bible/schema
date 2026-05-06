@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { expect } from "expect";
-import { BTree } from "./btree.ts";
+import { BTree, toString } from "./btree.ts";
 
 function shuffle<T>(arr: T[]): T[] {
 	let i = arr.length;
@@ -13,16 +13,16 @@ function shuffle<T>(arr: T[]): T[] {
 	return arr;
 }
 
-test("bigint keys", () => {
+test("btree set, delete, min, max", () => {
 	const tree = new BTree<bigint, string>(undefined, 4);
 	const map = new Map<bigint, string>();
 
 	let min: bigint | undefined;
 	let max: bigint | undefined;
 	const arr = shuffle([
-		...Array(tree.maxNodeSize * tree.maxNodeSize - 1)
+		...Array(tree.maxNodeSize * tree.maxNodeSize)
 			.keys()
-			.map(BigInt),
+			.map((n) => BigInt((n + 1) * 3)),
 	]);
 
 	for (let i = 0; i < arr.length; i++) {
@@ -53,35 +53,45 @@ test("bigint keys", () => {
 	expect(i).toBe(arr.length);
 
 	for (const k of map.keys()) expect(tree.delete(k)).toBeGreaterThan(0);
-	expect(tree.delete(2n)).toBe(0);
+	expect(tree.delete(2n)).toBe(-1);
 	expect(tree.get(2n)).toBeUndefined();
 });
 
-test("getpos", () => {
+const map = new Map<bigint, string>([
+	[15n, " created"],
+	[12n, " God"],
+	[9n, " beginning"],
+	[6n, " the"],
+	[3n, "in"],
+]);
+function treeSample() {
 	const tree = new BTree<bigint, string>(undefined, 4);
-	const map = new Map<bigint, string>([
-		[5n, " created"],
-		[4n, " God"],
-		[3n, " beginning"],
-		[2n, " the"],
-		[1n, "in"],
-	]);
-
 	for (const [k, v] of map.entries()) tree.set(k, v);
+	return tree;
+}
+
+test("btree mark", () => {
+	const tree = treeSample();
+
+	console.log(toString(tree));
+	tree.mark(2n, 7n, { tag: "WOW" });
+});
+
+test("btree getpos", () => {
+	const tree = treeSample();
 
 	const expectedLength = map.values().reduce((acc, cur) => acc + cur.length, 0);
 	expect(tree.size).toBe(map.size);
 	expect(tree.length).toBe(expectedLength);
 
-	expect(tree.getPos(0)).toEqual({ key: 1n, value: "in", offset: 0 });
-	expect(tree.getPos(1)).toEqual({ key: 1n, value: "in", offset: 1 });
-	expect(tree.getPos(2)).toEqual({ key: 2n, value: " the", offset: 0 });
-	expect(tree.getPos(21)).toEqual({ key: 5n, value: " created", offset: 1 });
+	expect(tree.getPos(0)).toEqual({ key: 3n, value: "in", offset: 0 });
+	expect(tree.getPos(1)).toEqual({ key: 3n, value: "in", offset: 1 });
+	expect(tree.getPos(2)).toEqual({ key: 6n, value: " the", offset: 0 });
+	expect(tree.getPos(21)).toEqual({ key: 15n, value: " created", offset: 1 });
 
-	// console.dir(tree, { depth: null });
-	expect(tree.delete(2n)).toBe(map.get(2n)!.length);
+	expect(tree.delete(6n)).toBe(map.get(6n)!.length);
 
-	expect(tree.getPos(0)).toEqual({ key: 1n, value: "in", offset: 0 });
-	expect(tree.getPos(2)).toEqual({ key: 3n, value: " beginning", offset: 0 });
-	expect(tree.length).toBe(expectedLength - map.get(2n)!.length);
+	expect(tree.getPos(0)).toEqual({ key: 3n, value: "in", offset: 0 });
+	expect(tree.getPos(2)).toEqual({ key: 9n, value: " beginning", offset: 0 });
+	expect(tree.length).toBe(expectedLength - map.get(6n)!.length);
 });

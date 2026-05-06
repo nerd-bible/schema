@@ -190,9 +190,8 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 		child.set(key, value, tree);
 		this._keys[idx] = child.maxKey();
 		this._length += value.length;
-
-		const right = child.trySplitRight(tree);
-		if (right) {
+		if (child._values.length > tree.maxNodeSize) {
+			const right = child.splitRight(tree.splitNodeSize);
 			this._keys[idx] = child.maxKey();
 			this._values.splice(idx + 1, 0, right);
 			this._keys.splice(idx + 1, 0, right.maxKey());
@@ -256,7 +255,8 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 		const child = this._values[idx];
 		if (child instanceof Leaf) {
 			const idx2 = tree.indexOf(child, key, 0);
-			if (idx2 > 0 && idx2 < child._values.length - 1) {
+			if (idx2 > 0 && idx2 < this._values.length - 1) {
+				console.log("SPLIT")
 				const split = child.splitRight(idx2);
 				this._keys[idx] = child.maxKey();
 				this._keys.splice(idx + 1, 0, split.maxKey());
