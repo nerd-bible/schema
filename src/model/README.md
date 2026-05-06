@@ -4,7 +4,7 @@ Similar to [prosemirror-model](https://code.haverbeke.berlin/prosemirror/prosemi
 
 1. Uses stable indices for content addressing
 2. Smallest unit is a word instead of a character
-3. `toDom` can return anything
+3. `toDom` is template for modern frameworks
 
 ## Why?
 
@@ -16,8 +16,23 @@ For a schema like ours that:
 
 1. Has large documents
 2. Requires partial document rendering for search and annotation views
-3. has MANY addresses for annotations
+3. has a LOT of content that references others
 
-this wins over (version, pos) addressing. Generally for writing you want stable
-indices and for reading you want relative indices. We use a B-Tree to sort our
-stable indices for display.
+this wins over (version, pos) addressing.
+
+## Schema
+
+### Inline
+
+- Highlights
+- Em, strong, short quotes
+- Notes
+
+### Block
+
+- Paragraphs
+- Long quotes
+  - Can split first/last paragraphs
+- Lists
+  - Can split first/last paragraphs
+- Outlines, which can split other blocks

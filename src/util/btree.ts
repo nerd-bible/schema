@@ -18,7 +18,7 @@ type NodeGenerator<K extends Comparable, V extends Length> = Generator<{
 abstract class Node<K extends Comparable, V extends Length> {
 	_values: (Internal<K, V> | Leaf<K, V>)[] | V[];
 	_keys: K[];
-	length: number;
+	_length: number;
 
 	constructor(
 		values: (Internal<K, V> | Leaf<K, V>)[] | V[],
@@ -27,7 +27,11 @@ abstract class Node<K extends Comparable, V extends Length> {
 	) {
 		this._values = values;
 		this._keys = keys;
-		this.length = length;
+		this._length = length;
+	}
+
+	get length(): number {
+		return this._length;
 	}
 
 	abstract get size(): number;
@@ -43,7 +47,7 @@ abstract class Node<K extends Comparable, V extends Length> {
 			values,
 			keys,
 		);
-		this.length -= res.length;
+		this._length -= res.length;
 		return res;
 	}
 
@@ -96,7 +100,7 @@ export class Leaf<K extends Comparable, V extends Length> extends Node<K, V> {
 
 		this._keys.splice(idx, 0, key);
 		this._values.splice(idx, 0, value);
-		this.length += value.length;
+		this._length += value.length;
 		return this.trySplitRight(tree);
 	}
 
@@ -105,7 +109,7 @@ export class Leaf<K extends Comparable, V extends Length> extends Node<K, V> {
 		if (idx !== -1) {
 			this._keys.splice(idx, 1);
 			const res = this._values[idx].length;
-			this.length -= res;
+			this._length -= res;
 			this._values.splice(idx, 1);
 			return res;
 		}
@@ -124,7 +128,7 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 	V
 > {
 	declare _values: (Internal<K, V> | Leaf<K, V>)[];
-	#size = 0;
+	_size = 0;
 
 	constructor(
 		values: (Internal<K, V> | Leaf<K, V>)[],
@@ -132,11 +136,11 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 		length = values.reduce((acc, c) => acc + c.length, 0),
 	) {
 		super(values, keys, length);
-		this.#size = values.reduce((acc, c) => acc + c.size, 0);
+		this._size = values.reduce((acc, c) => acc + c.size, 0);
 	}
 
 	get size(): number {
-		return this.#size;
+		return this._size;
 	}
 
 	minKey(): K {
@@ -155,21 +159,13 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 
 		const result = child.set(key, value, tree);
 		this._keys[idx] = child.maxKey();
-		this.length += value.length;
-		this.#size += 1;
+		this._length += value.length;
+		this._size += 1;
 		if (!result) return;
 
 		this._values.splice(idx + 1, 0, result);
 		this._keys.splice(idx + 1, 0, result.maxKey());
-		const res = this.trySplitRight(tree);
-		if (res && this instanceof BTree) {
-			const old = new Internal<K, V>(this._values, this._keys, this.length);
-			this._values = [old, res];
-			this._keys = [old.maxKey(), res.maxKey()];
-			this.length = old.length + res.length;
-			this.#size = old.size + res.size;
-		}
-		return res;
+		return this.trySplitRight(tree);
 	}
 
 	delete(key: K, tree: BTree<K, V>): number {
@@ -179,8 +175,8 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 		const child = this._values[idx];
 		const result = child.delete(key, tree);
 		if (result) {
-			this.length -= result;
-			this.#size -= 1;
+			this._length -= result;
+			this._size -= 1;
 			this._keys[idx] = child.maxKey();
 			if (child._values.length < tree.minNodeSize)
 				this.tryMergeLeft(idx, tree) || this.tryMergeLeft(idx + 1, tree);
@@ -200,12 +196,12 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 				same = true;
 			} else if (left instanceof Internal && child instanceof Internal) {
 				left._values.push(...child._values);
-				left.#size += child.#size;
+				left._size += child._size;
 				same = true;
 			}
 			if (same) {
 				left._keys.push(...child._keys);
-				left.length += child.length;
+				left._length += child.length;
 				this._values.splice(idx, 1);
 				this._keys.splice(idx - 1, 1);
 				return true;
@@ -257,7 +253,14 @@ export class BTree<K extends Comparable, V extends Length> extends Internal<
 	}
 
 	set(key: K, value: V): void {
-		super.set(key, value, this);
+		const res = super.set(key, value, this);
+		if (res) {
+			const old = new Internal<K, V>(this._values, this._keys, this.length);
+			this._values = [old, res];
+			this._keys = [old.maxKey(), res.maxKey()];
+			this._length = old.length + res.length;
+			this._size = old.size + res.size;
+		}
 	}
 
 	delete(key: K): number {
