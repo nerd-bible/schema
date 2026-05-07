@@ -43,7 +43,7 @@ test("btree set, delete, min, max", () => {
 
 		expect(tree.get(k)).toBe(v);
 	}
-	console.log(toString(tree));
+	// console.log(toString(tree));
 
 	expect(tree.size).toBe(arr.length);
 	expect(tree.minKey()).toBe(min);
@@ -64,7 +64,7 @@ test("btree set, delete, min, max", () => {
 	for (const k of map.keys()) expect(tree.delete(k)).toBeGreaterThan(0);
 	expect(tree.delete(2n)).toBe(-1);
 	expect(tree.get(2n)).toBeUndefined();
-	console.log(toString(tree));
+	// console.log(toString(tree));
 });
 
 test("balanced inserts", () => {

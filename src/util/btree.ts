@@ -386,23 +386,23 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 		return this._path;
 	}
 
-	split(key: K, isLeaf = true): void {
+	split(key: K): void {
 		const path = this.resolve(key);
 		const nodes = this.pathNodes(path);
 		const leaf = nodes[nodes.length - 1] as Leaf<K, V>;
 		const leafIndex = path[path.length - 1];
-
-		if (isLeaf && (leafIndex === 0 || leafIndex === leaf._values.length))
-			return;
-
-		const leafParent = nodes[nodes.length - 2] as Internal<K, V>;
-		const right = leaf.splitRight(leafIndex);
-		leafParent.adopt(right, path[path.length - 2]);
+		if (leafIndex != 0 && leafIndex != leaf._values.length) {
+			const leafParent = nodes[nodes.length - 2] as Internal<K, V>;
+			const right = leaf.splitRight(leafIndex);
+			leafParent.adopt(right, path[path.length - 2]);
+		}
 	}
 
 	mark(low: K, high: K, marks: Marks) {
 		this.split(low);
+		const lowPath = this._path.slice();
 		this.split(high);
+		const highPath = this._path.slice();
 
 		// Decide if should toggle
 		let nodeCount = 0;
@@ -422,14 +422,10 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 			}
 		}
 
-		// TODO: this can be greatly optimized:
-		// 1. cache paths from above `.leaves` calls
-		// 2. amend `balanceMerging` to take multiple paths and not redo work for
-		//    common ancestors
-		this.resolve(low);
-		this.balanceMerging();
-		this.resolve(high);
-		this.balanceMerging();
+		// TODO: optimize `balanceMerging` to take multiple paths and not redo work
+		// for common ancestors
+		this.balanceMerging(lowPath);
+		this.balanceMerging(highPath);
 	}
 
 	*keys(low = this.minKey(), high = this.maxKey()): Generator<K> {
