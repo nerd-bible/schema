@@ -33,13 +33,9 @@ export function binarySearch<A, B>(
 		mid = fromIdx + ((toIdx - fromIdx) >>> 1);
 		cmp = comparator(haystack[mid], needle, mid, haystack);
 
-		if (cmp < 0) {
-			fromIdx = mid + 1;
-		} else if (cmp > 0) {
-			toIdx = mid - 1;
-		} else {
-			return mid;
-		}
+		if (cmp < 0) fromIdx = mid + 1;
+		else if (cmp > 0) toIdx = mid - 1;
+		else return mid;
 	}
 
 	// Return -fromIdx - 1. We could return -fromIdx, but then the caller would

@@ -127,6 +127,14 @@ export const mark = v
 	})
 	.extendPartial({ data: v.any() })
 	.register(
+		"table",
+		[
+			"PRIMARY KEY (doc, start, tag)",
+			"FOREIGN KEY (doc, start + 1) REFERENCES word(doc, id)",
+			"FOREIGN KEY (doc, end - 1) REFERENCES word(doc, id)",
+		].join(",\n\t"),
+	)
+	.register(
 		"extra",
 		"CREATE INDEX IF NOT EXISTS markStart ON mark(doc, tag, start)",
 	);

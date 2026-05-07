@@ -21,12 +21,12 @@ function cmp(a: bigint, b: bigint): number {
 }
 
 test("btree set, delete, min, max", () => {
-	const tree = new BTree<bigint, string>(undefined, 4);
+	const tree = new BTree<bigint, string>(4);
 	const map = new Map<bigint, string>();
 
 	let min: bigint | undefined;
 	let max: bigint | undefined;
-	const arr = shuffle([
+	const arr = ([
 		...Array(tree.maxNodeSize * tree.maxNodeSize)
 			.keys()
 			.map((n) => BigInt((n + 1) * 3)),
@@ -43,14 +43,13 @@ test("btree set, delete, min, max", () => {
 
 		expect(tree.get(k)).toBe(v);
 	}
+	console.log(toString(tree));
 
 	expect(tree.size).toBe(arr.length);
 	expect(tree.minKey()).toBe(min);
 	expect(tree.maxKey()).toBe(max);
 
 	for (const [k, v] of map.entries()) expect(tree.get(k)).toBe(v);
-
-	console.log(toString(tree));
 	expect([...tree.keys()].sort(cmp)).toEqual([...map.keys()].sort(cmp));
 
 	let last = -1n;
@@ -65,6 +64,7 @@ test("btree set, delete, min, max", () => {
 	for (const k of map.keys()) expect(tree.delete(k)).toBeGreaterThan(0);
 	expect(tree.delete(2n)).toBe(-1);
 	expect(tree.get(2n)).toBeUndefined();
+	console.log(toString(tree));
 });
 
 const map = new Map<bigint, string>([
@@ -84,7 +84,7 @@ test("btree mark", () => {
 	const tree = treeSample();
 
 	console.log(toString(tree));
-	tree.mark(5n, 13n, { tag: "WOW" });
+	tree.mark(5n, 13n, { em: {} });
 	// tree.mark(5n, 10n, { tag: "WOW" });
 	console.log(toString(tree));
 });
