@@ -73,12 +73,6 @@ abstract class Node<K extends Comparable, V extends Length> {
 		return this._keys[this._keys.length - 1];
 	}
 
-	resolve(key: K, failXor: number = 0, path?: number[]) {
-		const idx = this.indexOf(key, failXor, path);
-		const child = this._values[idx];
-		if (child instanceof Node) child.resolve(key, failXor, path);
-	}
-
 	indexOf(key: K, failXor: number = 0, path?: number[]): number {
 		const idx = indexOf(
 			this as unknown as Internal<K, V> | Leaf<K, V>,
@@ -104,8 +98,7 @@ abstract class Node<K extends Comparable, V extends Length> {
 			const value = this._values[i];
 			if (pos - value.length < 0) {
 				const value = this._values[i];
-				if (value instanceof Internal || value instanceof Leaf)
-					return value.getPos(pos);
+				if (value instanceof Node) return value.getPos(pos);
 				return { key: this._keys[i], value, offset: pos };
 			}
 			pos -= value.length;
@@ -132,6 +125,10 @@ export class Leaf<K extends Comparable, V extends Length> extends Node<K, V> {
 		this._keys.splice(idx, 0, key);
 		this._values.splice(idx, 0, value);
 		this._length += value.length;
+	}
+
+	resolve(key: K, path: number[]) {
+		this.indexOf(key, 0, path);
 	}
 
 	delete(key: K, path: number[]): number {
@@ -175,13 +172,34 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 		return this._values[idx].get(key);
 	}
 
+	indexOfSet(key: K): number {
+		let idx = this.indexOf(key, -1);
+		if (idx < 0) {
+			idx ^= -1;
+			if (
+				idx >= this._values.length ||
+				this._values[idx - 1]?.length < this._values[idx].length
+			)
+				idx--;
+		}
+		return idx;
+	}
+
 	set(key: K, value: V, path: number[]): void {
-		const idx = Math.min(this.indexOf(key), this._values.length - 1);
+		const idx = this.indexOfSet(key);
 		path.push(idx);
 		const child = this._values[idx];
 		child.set(key, value, path);
 		if (this._keys[idx] == null || key > this._keys[idx]) this._keys[idx] = key;
 		this._length += value.length;
+	}
+
+	resolve(key: K, path: number[]) {
+		const idx = this.indexOfSet(key);
+		const child = this._values[idx];
+
+		path.push(idx);
+		child.resolve(key, path);
 	}
 
 	delete(key: K, path: number[]): number {
@@ -190,9 +208,8 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 		const res = child?.delete(key, path) ?? -1;
 		if (res != -1) {
 			this._length -= res;
-			if (this._values.length === 1 && this._values[0]._length === 0) {
-				this._keys = [];
-			}
+			const vals = this._values;
+			if (vals.length === 1 && vals[0]._length === 0) this._keys = [];
 		}
 		return res;
 	}
@@ -231,12 +248,12 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 	}
 
 	tryMergeLeft(idx: number, tree: BTree): boolean {
-		const child = this._values[idx];
 		const left = this._values[idx - 1];
+		const right = this._values[idx];
 		if (
-			child &&
+			right &&
 			left?._values.length <= tree.minNodeSize &&
-			deepEqual(left._marks, child._marks)
+			deepEqual(left._marks, right._marks)
 		)
 			return this.mergeLeft(idx);
 		return false;
@@ -251,7 +268,7 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 
 export class BTree<K extends Comparable = any, V extends Length = any> {
 	maxNodeSize: number;
-	splitNodeSize: number;
+	targetNodeSize: number;
 	minNodeSize: number;
 	root = new Internal<K, V>([new Leaf<K, V>()]);
 	_depth = 2;
@@ -261,7 +278,7 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 
 	constructor(maxNodeSize = 64, splitNodeSize = Math.floor(maxNodeSize * 0.8)) {
 		this.maxNodeSize = maxNodeSize;
-		this.splitNodeSize = splitNodeSize;
+		this.targetNodeSize = splitNodeSize;
 		this.minNodeSize = maxNodeSize << 1;
 	}
 
@@ -300,23 +317,23 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 	set(key: K, value: V): void {
 		this.root.set(key, value, (this._path = []));
 		this._size += 1;
-		this.balanceSplitting(this._path);
+		this.balanceSplitting();
 	}
 
-	resolve(path: number[]): (Internal<K, V> | Leaf<K, V>)[] {
-		const nodes: ReturnType<typeof this.resolve> = [this.root];
+	pathNodes(path: number[] = this._path): (Internal<K, V> | Leaf<K, V>)[] {
+		const nodes: ReturnType<typeof this.pathNodes> = [this.root];
 		for (const p of path.slice(0, -1)) {
 			nodes.push((nodes[nodes.length - 1] as Internal<K, V>)._values[p]);
 		}
 		return nodes;
 	}
 
-	balanceSplitting(path: number[]) {
-		const nodes = this.resolve(path);
+	balanceSplitting(path: number[] = this._path) {
+		const nodes = this.pathNodes(path);
 		for (let i = nodes.length - 1; i >= 0; i--) {
 			const node = nodes[i];
 			if (node._values.length > this.maxNodeSize) {
-				const right = node.splitRight(this.splitNodeSize);
+				const right = node.splitRight(this.targetNodeSize);
 				const parent = nodes[i - 1] as Internal<K, V>;
 				if (parent) parent.adopt(right, path[i - 1]);
 				else {
@@ -332,16 +349,17 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 		}
 	}
 
-	balanceMerging(path: number[]) {
-		const nodes = this.resolve(path);
+	balanceMerging(path: number[] = this._path) {
+		const nodes = this.pathNodes(path);
 		for (let i = nodes.length - 2; i >= 0; i--) {
 			const parent = nodes[i] as Internal<K, V>;
 			const grandparent = nodes[i - 1] as Internal<K, V>;
 			if (
 				parent.tryMergeLeft(path[i], this) ||
-				parent.tryMergeLeft(path[i + 1], this)
+				parent.tryMergeLeft(path[i] + 1, this)
 			) {
 				if (grandparent && parent._values.length === 1) {
+					// hoist
 					grandparent._values = parent._values;
 					this._depth--;
 				}
@@ -358,18 +376,27 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 		const res = this.root.delete(key, (this._path = []));
 		if (res !== -1) {
 			this._size -= 1;
-			this.balanceMerging(this._path);
+			this.balanceMerging();
 		}
 		return res;
 	}
 
-	split(key: K): void {
-		const path = (this._path = []);
-		this.root.resolve(key, 0, path);
-		const nodes = this.resolve(path);
+	resolve(key: K): number[] {
+		this.root.resolve(key, (this._path = []));
+		return this._path;
+	}
+
+	split(key: K, isLeaf = true): void {
+		const path = this.resolve(key);
+		const nodes = this.pathNodes(path);
 		const leaf = nodes[nodes.length - 1] as Leaf<K, V>;
+		const leafIndex = path[path.length - 1];
+
+		if (isLeaf && (leafIndex === 0 || leafIndex === leaf._values.length))
+			return;
+
 		const leafParent = nodes[nodes.length - 2] as Internal<K, V>;
-		const right = leaf.splitRight(path[path.length - 1]);
+		const right = leaf.splitRight(leafIndex);
 		leafParent.adopt(right, path[path.length - 2]);
 	}
 
@@ -395,7 +422,14 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 			}
 		}
 
-		// TODO: try sibling node merger
+		// TODO: this can be greatly optimized:
+		// 1. cache paths from above `.leaves` calls
+		// 2. amend `balanceMerging` to take multiple paths and not redo work for
+		//    common ancestors
+		this.resolve(low);
+		this.balanceMerging();
+		this.resolve(high);
+		this.balanceMerging();
 	}
 
 	*keys(low = this.minKey(), high = this.maxKey()): Generator<K> {

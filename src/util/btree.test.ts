@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { expect } from "expect";
-import { BTree, toString } from "./btree.ts";
+import { BTree, Internal, Leaf, toString } from "./btree.ts";
 
 function shuffle<T>(arr: T[]): T[] {
 	let i = arr.length;
@@ -26,11 +26,11 @@ test("btree set, delete, min, max", () => {
 
 	let min: bigint | undefined;
 	let max: bigint | undefined;
-	const arr = ([
+	const arr = [
 		...Array(tree.maxNodeSize * tree.maxNodeSize)
 			.keys()
 			.map((n) => BigInt((n + 1) * 3)),
-	]);
+	];
 
 	for (let i = 0; i < arr.length; i++) {
 		const k = arr[i];
@@ -67,6 +67,21 @@ test("btree set, delete, min, max", () => {
 	console.log(toString(tree));
 });
 
+test("balanced inserts", () => {
+	const tree = new BTree<bigint, string>(4);
+
+	tree.set(4n, "2");
+	tree.set(8n, "2");
+	tree.set(12n, "2");
+	tree.set(16n, "2");
+	// splits
+	tree.set(20n, "2");
+	// should choose to insert in 2nd internal instead of 1st
+	tree.set(13n, "2");
+	const internals = tree.root._values;
+	expect(internals[0].length).toEqual(internals[1].length);
+});
+
 const map = new Map<bigint, string>([
 	[15n, " created"],
 	[12n, " God"],
@@ -75,7 +90,7 @@ const map = new Map<bigint, string>([
 	[3n, "in"],
 ]);
 function treeSample() {
-	const tree = new BTree<bigint, string>(undefined, 4);
+	const tree = new BTree<bigint, string>(4);
 	for (const [k, v] of map.entries()) tree.set(k, v);
 	return tree;
 }
@@ -83,10 +98,33 @@ function treeSample() {
 test("btree mark", () => {
 	const tree = treeSample();
 
-	console.log(toString(tree));
 	tree.mark(5n, 13n, { em: {} });
-	// tree.mark(5n, 10n, { tag: "WOW" });
-	console.log(toString(tree));
+	expect(tree.root).toEqual(
+		new Internal<bigint, string>(
+			[
+				new Leaf(["in"], [3n]),
+				new Leaf([" the", " beginning", " God"], [6n, 9n, 12n], 18, {
+					em: {},
+				}),
+				new Leaf([" created"], [15n]),
+			],
+			[3n, 12n, 15n],
+			28,
+		),
+	);
+	tree.mark(2n, 4n, { em: {} });
+	expect(tree.root).toEqual(
+		new Internal<bigint, string>(
+			[
+				new Leaf(["in", " the", " beginning", " God"], [3n, 6n, 9n, 12n], 20, {
+					em: {},
+				}),
+				new Leaf([" created"], [15n]),
+			],
+			[12n, 15n],
+			28,
+		),
+	);
 });
 
 test("btree getpos", () => {
