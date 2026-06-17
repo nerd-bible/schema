@@ -1,5 +1,5 @@
-import type { Builder } from "../typescript/builder.ts";
-import * as tables from "../typescript/tables.ts";
+import type { Namespace } from "../schema/builder.ts";
+import * as tables from "../schema/tables.ts";
 import { createTableToSqlite } from "./valioToSchema.ts";
 
 export type Serializable = string | number | object | bigint;
@@ -69,15 +69,14 @@ export async function rows(
 	}
 }
 
-export async function documents(db: Db, b: Builder) {
-	await rows(db, "doc", b.docs);
-	for (const w of b.docWords.values()) await rows(db, "word", w);
-	for (const m of b.docMarks.values()) await rows(db, "mark", m);
-
-	await rows(db, "docTag", b.docTags);
-	await rows(db, "scripture", b.scriptures);
-	await rows(db, "outline", b.outlines);
-	await rows(db, "highlight", b.highlights);
-	await rows(db, "note", b.notes);
-	await rows(db, "xref", b.xrefs);
+export async function documents(db: Db, b: Namespace) {
+	await rows(db, "namespace", [b.namespace]);
+	for (const d of b.docs) {
+		await rows(db, "doc", [d.meta]);
+		await rows(db, "docTag", d.tags);
+		await rows(db, "word", d.words);
+		await rows(db, "block", d.blocks);
+		await rows(db, "outline", d.outlines);
+		await rows(db, "mark", d.marks);
+	}
 }

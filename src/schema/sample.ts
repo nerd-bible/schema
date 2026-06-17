@@ -1,69 +1,79 @@
 import { Hasher } from "../hash.ts";
-import { Builder } from "./builder.ts";
+import type { Doc } from "./builder.ts";
+import { Namespace } from "./builder.ts";
 import type { Book } from "./tables.ts";
 
 const hasher = new Hasher("SHA-256");
+const lang = "eng";
 
-type Heading = { tag: "h2"; text: string };
+type Heading = { tag: "h2" | "h3" | "h4" | "h5" | "h6"; text: string };
 type Paragraph = { tag: "p" };
 type Chapter = { tag: "c"; n: number };
 type Verse = { tag: "v"; n: number };
 type Note = { tag: "pn"; children: Inline[] };
 type Span = { tag: "em" | "strong" | "q"; children: Inline[] };
-type Inline = Span | string;
+type Inline = Span | string | Verse;
 type Content = (Heading | Paragraph | Chapter | Verse | Note | Inline)[];
 
-async function parseTag(b: Builder, tag: Content[number]) {
+let chapter = 1;
+let nextOutlineText: bigint | undefined;
+
+async function parseTag(n: Namespace, d: Doc, tag: Content[number]) {
 	if (typeof tag === "string") {
-		b.pushText(tag);
+		d.pushText(tag);
 		return;
 	}
 
 	switch (tag.tag) {
 		case "h2": {
-			b.pushOutline({ level: 1, text: tag.text });
+			const newDoc = n.createDoc({ lang });
+			newDoc.pushText(tag.text);
+			nextOutlineText = newDoc.meta.id;
 			break;
 		}
 		case "p":
-			b.startMark("p");
+			d.pushBlock({ tag: "p" });
 			break;
 		case "c":
-			b.startMark("c", tag.n);
+			chapter = tag.n;
 			break;
 		case "v":
-			b.startMark("v", tag.n);
+			d.pushOutline({
+				chapter,
+				verse: tag.n,
+				...(nextOutlineText ? { text: nextOutlineText } : {}),
+			});
+			nextOutlineText = undefined;
 			break;
 		case "em":
 		case "strong":
 		case "q":
-			b.startMark(tag.tag);
-			for (const t of tag.children) await parseTag(b, t);
-			b.endMark(tag.tag);
+			d.pushMark({ tag: tag.tag });
+			for (const t of tag.children) await parseTag(n, d, t);
+			d.endMark(tag.tag);
 			break;
 		case "pn": {
 			hasher.reset();
 			await hasher.any(tag.children);
-			b.pushNote({ id: hasher.bigint63(), lang: "eng" });
-			for (const t of tag.children) await parseTag(b, t);
-			b.docIndex = 0;
+			const note = n.createDoc({ ...d.meta, id: hasher.bigint63() });
+			for (const t of tag.children) await parseTag(n, note, t);
 			break;
 		}
 	}
 }
 
 async function sampleDocument(id: Book, content: Content) {
-	const b = new Builder();
+	const n = new Namespace({ name: "Berean Standard Bible", short: "BSB" });
 	await hasher.any(content);
-	b.pushScripture({
-		id: hasher.bigint63(),
-		lang: "eng",
+	const d = n.createDoc({
+		lang,
 		book: id,
-		code: "BSB",
 		title: id === "gen" ? "Genesis" : "Exodus",
 		createdAt: new Date("2025-12-23"),
+		id: hasher.bigint63(),
 	});
-	for (const t of content) await parseTag(b, t);
-	return b.finalize();
+	for (const t of content) await parseTag(n, d, t);
+	return n.finalize();
 }
 
 // TODO: usfm
@@ -99,7 +109,7 @@ export const gen = await sampleDocument("gen", [
 	" And by the seventh day God had finished the work He had been doing; so on that day He rested from all His work.",
 	{ tag: "pn", children: ["Cited in Hebrews 4:4"] },
 	{ tag: "v", n: 3 },
-	" Then God blessed the seventh day and sanctified it, because on that day He rested from all the work of creation that He had accomplished.",
+	" Then God blessed the seventh day and sanctified it, because on that day He rested from all the work of creation that He had accomplished. YAY",
 ]);
 export const exo = await sampleDocument("exo", [
 	{ tag: "c", n: 1 },
@@ -133,9 +143,15 @@ export const exo = await sampleDocument("exo", [
 	{ tag: "v", n: 8 },
 	" Then a new king, who did not know Joseph, came to power in Egypt.",
 	{ tag: "v", n: 9 },
-	" “Look,” he said to his people, “the Israelites have become too numerous and too powerful for us.",
-	{ tag: "v", n: 10 },
-	" Come, let us deal shrewdly with them, or they will increase even more; and if a war breaks out, they may join our enemies, fight against us, and leave the country.”",
+	" “Look,” he said to his people, ",
+	{
+		tag: "q",
+		children: [
+			"“the Israelites have become too numerous and too powerful for us.",
+			{ tag: "v", n: 10 },
+			" Come, let us deal shrewdly with them, or they will increase even more; and if a war breaks out, they may join our enemies, fight against us, and leave the country.”",
+		],
+	},
 	{
 		tag: "pn",
 		children: ["Or ", { tag: "em", children: ["and take the country"] }],

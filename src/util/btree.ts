@@ -428,6 +428,23 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 		this.balanceMerging(highPath);
 	}
 
+	block(low: K, high: K, marks: Marks) {
+		this.split(low);
+		const lowPath = this._path.slice();
+		this.split(high);
+		const highPath = this._path.slice();
+
+		// Decide if should toggle??
+
+		// move nodes
+		// for (const n of this.root.leaves(low, high)) {
+		// 	for (const t in marks) {
+		// 		if (count[t] === nodeCount) delete n.node._marks[t];
+		// 		else n.node._marks[t] = marks[t];
+		// 	}
+		// }
+	}
+
 	*keys(low = this.minKey(), high = this.maxKey()): Generator<K> {
 		for (const { node, start, end } of this.root.leaves(low, high)) {
 			for (let i = start; i < end; i++) yield node._keys[i];

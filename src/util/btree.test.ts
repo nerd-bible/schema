@@ -95,7 +95,7 @@ function treeSample() {
 	return tree;
 }
 
-test("btree mark", () => {
+test("btree combines mark", () => {
 	const tree = treeSample();
 
 	tree.mark(5n, 13n, { em: {} });
@@ -125,6 +125,30 @@ test("btree mark", () => {
 			28,
 		),
 	);
+});
+
+test("btree doesn't combine blocks", () => {
+	const tree = treeSample();
+
+	console.log(toString(tree));
+	tree.block(5n, 13n, { p: {} });
+	console.log(toString(tree));
+	// expect(tree.root).toEqual(
+	// 	new Internal<bigint, string>(
+	// 		[
+	// 			new Internal<bigint, string>([new Leaf(["in"], [3n])], [3n]),
+	// 			new Internal<bigint, string>(
+	// 				[new Leaf([" the", " beginning", " God"], [6n, 9n, 12n], 18)],
+	// 				[12n],
+	// 				18,
+	// 				{ p: {} },
+	// 			),
+	// 			new Internal<bigint, string>([new Leaf(["created"], [15n])], [15n]),
+	// 		],
+	// 		[3n, 12n, 15n],
+	// 		28,
+	// 	),
+	// );
 });
 
 test("btree getpos", () => {

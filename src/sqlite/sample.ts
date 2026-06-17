@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import * as sample from "../typescript/sample.ts";
+import * as sample from "../schema/sample.ts";
 import { functions, ingest } from "./index.ts";
 import type { Db } from "./ingest.ts";
 import { validate } from "./validate.ts";
@@ -10,7 +10,6 @@ export function openDb(rmExisting = false): Db {
 	if (rmExisting) rmSync(fname, { force: true });
 	const db = new DatabaseSync(fname, { open: true });
 	db.function("stemmer", { deterministic: true }, functions.stemmer);
-	db.function("spanContains", { deterministic: true }, functions.spanContains);
 	return {
 		exec: async (sql: string) => db.exec(sql),
 		run: async (sql: string) => db.prepare(sql, { readBigInts: true }).all(),

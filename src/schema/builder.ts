@@ -1,18 +1,20 @@
-import { builtin64 } from "../rand.ts";
+import { builtin64 } from "../util/rand.ts";
 import * as t from "./tables.ts";
 import * as ref from "@nerd-bible/ref";
 
 const isWordSeperator = (text: string) =>
 	text.match(/[\p{Pc}\p{Pd}\p{Z}]+/u) != null;
 const bcv = new RegExp(ref.bcvStrict.source, ref.bcv.flags + "g");
+const wordGap = 2; // for cursors
+const defaultLoadFactor = 0.8;
+const maxInt = BigInt("0x" + "F".repeat(16));
 
+type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] };
 export type Token = {
 	before: string;
 	text: string;
 	after: string;
 };
-
-type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] };
 
 export function tokenize(input: string, lang: string): Token[] {
 	const words: ReturnType<typeof tokenize> = [];
@@ -44,197 +46,137 @@ export function tokenize(input: string, lang: string): Token[] {
 	return words;
 }
 
-function getOrInsert<K, V>(map: Map<K, V>, key: K, value: V): V {
-	const maybe = map.get(key);
-	if (maybe) return maybe;
-	map.set(key, value);
-	return value;
-}
-
-export class Builder {
-	docs: t.Doc[] = [];
-	docTags: t.DocTag[] = [];
-	scriptures: t.Scripture[] = [];
-	highlights: t.Highlight[] = [];
-	notes: t.Note[] = [];
+export class Doc {
+	meta: t.Doc;
+	tags: t.DocTag[] = [];
+	words: t.Word[] = [];
+	blocks: t.Block[] = [];
 	outlines: t.Outline[] = [];
-	xrefs: t.Xref[] = [];
+	marks: t.Mark[] = [];
 
-	docWords: Map<bigint, t.Word[]> = new Map();
-	docMarks: Map<bigint, t.Mark[]> = new Map();
-
-	docIndex = 0;
-	chapter = 1;
-	verse = 0;
-
-	get doc() {
-		return this.docs[this.docIndex];
+	constructor(meta: MakeOptional<t.Doc, "id">) {
+		meta.id ??= builtin64();
+		this.meta = meta as t.Doc;
 	}
 
-	get scripture() {
-		return this.scriptures[this.scriptures.length - 1];
-	}
-
-	get words() {
-		return getOrInsert(this.docWords, this.doc.id, []);
+	pushTag(tag: MakeOptional<t.DocTag, "doc">) {
+		tag.doc ??= this.meta.id;
+		this.tags.push(tag as t.DocTag);
 	}
 
 	get wordId() {
-		return BigInt(this.words.length) * 3n + 3n;
+		return BigInt(this.words.length + 1) * BigInt(wordGap);
 	}
 
-	get marks() {
-		return getOrInsert(this.docMarks, this.doc.id, []);
+	pushWord(text: string, lang = this.meta.lang): bigint {
+		const id = this.wordId;
+		if (lang != this.meta.lang) this.pushMark({ tag: "lang", data: lang });
+		this.words.push({ doc: this.meta.id, pos: id, text });
+		return id;
 	}
 
-	pushDoc(doc: MakeOptional<t.Doc, "id">) {
-		this.docs.push({
-			id: doc.id ?? builtin64(),
-			lang: doc.lang,
-			title: doc.title,
-			createdAt: doc.createdAt,
-		});
-		this.docIndex = this.docs.length - 1;
-	}
+	pushBlock(
+		block: MakeOptional<t.Block, "namespace" | "doc" | "id" | "pos">,
+	): bigint {
+		block.namespace ??= this.meta.namespace;
+		block.doc ??= this.meta.id;
+		block.id ??= builtin64();
+		block.pos ??= this.wordId - 1n;
+		this.blocks.push(block as t.Block);
 
-	pushScripture(doc: MakeOptional<t.Doc, "id"> & Omit<t.Scripture, "doc">) {
-		this.pushDoc(doc);
-		this.scriptures.push({
-			doc: this.doc.id,
-			code: doc.code,
-			book: doc.book,
-			urls: doc.urls,
-		});
+		return block.id;
 	}
 
 	pushOutline(
-		outline: MakeOptional<t.Outline, "doc" | "scripture" | "chapter" | "verse">,
-		chapter = this.chapter,
-		verse = this.verse + 1
-	) {
-		this.outlines.push({
-			doc: outline.doc ?? this.doc.id,
-			scripture: outline.scripture ?? this.scripture.doc,
-			chapter,
-			verse,
-			level: outline.level,
-			text: outline.text,
-		});
+		outline: MakeOptional<t.Outline, "namespace" | "doc" | "id" | "pos">,
+	): bigint {
+		outline.namespace ??= this.meta.namespace;
+		outline.doc ??= this.meta.id;
+		outline.id ??= builtin64();
+		outline.pos ??= this.wordId - 1n;
+		this.outlines.push(outline as t.Outline);
+
+		return outline.id;
 	}
 
-	pushNote(
-		note: MakeOptional<t.Doc, "id"> &
-			MakeOptional<Omit<t.Note, "doc">, "ref" | "refStart">,
-	) {
-		this.pushDoc(note);
-		this.notes.push({
-			doc: this.doc.id,
-			ref: this.doc.id,
-			refStart: note.refStart ?? BigInt(this.words.length - 1),
-			refEnd: note.refEnd,
-			highlight: note.highlight,
-		});
+	pushMark(mark: MakeOptional<t.Mark, "namespace" | "doc" | "start">) {
+		mark.namespace ??= this.meta.namespace;
+		mark.doc ??= this.meta.id;
+		mark.start ??= this.wordId;
+		this.marks.push(mark as t.Mark);
 	}
 
-	pushWord(text?: string, lang = this.doc.lang) {
-		const words = this.words;
-		words.push({
-			doc: this.doc.id,
-			id: this.wordId,
-			lang: lang === this.doc.lang ? undefined : lang,
-			text,
-		});
+	endMark(tag?: t.Mark["tag"]) {
+		const marks = this.marks;
+		const last = marks.findLast((s) => (tag ? s.tag === tag : true));
+		if (last) last.end = this.wordId - BigInt(wordGap);
 	}
 
-	pushText(text: string, lang = this.doc.lang) {
+	pushText(text: string, lang = this.meta.lang) {
 		const tokenizeSpan = (start: number, end: number) => {
-			for (const t of tokenize(text.substring(start, end), this.doc.lang))
+			for (const t of tokenize(text.substring(start, end), this.meta.lang))
 				this.pushWord(t.before + t.text + t.after, lang);
 		};
 
 		let i = 0;
 		for (const m of text.matchAll(bcv)) {
 			tokenizeSpan(i, m.index);
-			this.startMark("ref", {
-				book: ref.book.fromEnglish(m[1]),
-				chapter: +m[2],
-				verse: +m[3],
+			this.pushMark({
+				tag: "ref",
+				data: {
+					book: ref.book.fromEnglish(m[1]),
+					chapter: +m[2],
+					verse: +m[3],
+				},
 			});
 			const end = m.index + m[0].length;
-			this.pushWord(text.substring(m.index, end), "r");
-			this.endMark("ref");
+			this.pushWord(text.substring(m.index, end), lang);
 			i = end;
 		}
 		tokenizeSpan(i, text.length);
 	}
 
-	startMark(tag: t.Mark["tag"], data: t.Mark["data"] = {}) {
-		const marks = this.marks;
-		if (tag === "c") {
-			this.chapter = data;
-			this.verse = 0;
+	remapPositions(loadFactor: number) {
+		const min = (-maxInt * BigInt(loadFactor * 1e9)) / BigInt(1e9) / 2n;
+		const inc = -min / BigInt(this.words.length + 1);
+
+		function mapper(idx: bigint) {
+			return min + inc * idx;
 		}
-		if (tag === "v") this.verse = data;
-		marks.push({ doc: this.doc.id, start: this.wordId - 1n, tag, data });
+
+		for (const w of this.words) w.pos = mapper(w.pos);
+		for (const m of this.marks) {
+			m.start = mapper(m.start);
+			if (m.end) m.end = mapper(m.end);
+		}
+		for (const b of this.blocks) b.pos = mapper(b.pos);
+		for (const o of this.outlines) o.pos = mapper(o.pos);
 	}
 
-	endMark(tag: t.Mark["tag"]) {
-		const marks = this.marks;
-		const last = marks.findLast((s) => s.doc === this.doc.id && s.tag === tag);
-		if (last) last.end = BigInt(this.wordId - 2n);
+	finalize(loadFactor = defaultLoadFactor): this {
+		this.remapPositions(loadFactor);
+		return this;
+	}
+}
+
+export class Namespace {
+	namespace: t.Namespace;
+	docs: Doc[] = [];
+
+	constructor(namespace: MakeOptional<t.Namespace, "id">) {
+		namespace.id ??= builtin64();
+		this.namespace = namespace as t.Namespace;
 	}
 
-	remapWordIds(loadFactor: number) {
-		// Build map fns
-		const docMapFns = new Map<bigint, (id: bigint) => bigint>();
-		const approxMaxInt = Number(BigInt("0xFFFFFFFFFFFFFFFF"));
-		const approxMin = Math.floor(-approxMaxInt * loadFactor);
-		const min = (BigInt(approxMin) >> 2n) << 1n;
-		for (const d of this.docs) {
-			const words = this.docWords.get(d.id)!;
-			const approxInc = Math.floor(-approxMin / (words.length * 3 - 1));
-			const inc = BigInt(approxInc);
-			docMapFns.set(d.id, (idx: bigint) => {
-				let res = min + inc * (idx / 3n);
-				switch (idx % 3n) {
-					case 1n:
-						return res + 1n;
-					case 2n:
-						return res + inc - 1n;
-				}
-				return res;
-			});
-		}
-
-		// Use map fns
-		for (const [id, words] of this.docWords.entries()) {
-			const mapper = docMapFns.get(id)!;
-			for (const w of words) w.id = mapper(w.id);
-		}
-		for (const [id, marks] of this.docMarks.entries()) {
-			const mapper = docMapFns.get(id)!;
-			for (const m of marks) {
-				m.start = mapper(m.start);
-				if (m.end) m.end = mapper(m.end);
-			}
-		}
-		for (const n of this.notes) {
-			const mapper = docMapFns.get(n.ref)!;
-			n.refStart = mapper(n.refStart);
-			if (n.refEnd) n.refEnd = mapper(n.refEnd);
-		}
-		for (const x of this.xrefs) {
-			const srcMapper = docMapFns.get(x.src)!;
-			x.srcStart = srcMapper(x.srcStart);
-			if (x.srcEnd) x.srcEnd = srcMapper(x.srcEnd);
-			const destMapper = docMapFns.get(x.dest)!;
-			if (x.destStart) x.destStart = destMapper(x.destStart);
-			if (x.destEnd) x.destEnd = destMapper(x.destEnd);
-		}
+	createDoc(meta: MakeOptional<t.Doc, "namespace" | "id">): Doc {
+		meta.namespace ??= this.namespace.id;
+		const res = new Doc(meta as t.Doc);
+		this.docs.push(res);
+		return res;
 	}
 
-	finalize(loadFactor = 0.8): this {
-		// this.remapWordIds(loadFactor);
+	finalize(loadFactor = defaultLoadFactor): this {
+		for (const d of this.docs.values()) d.finalize(loadFactor);
 		return this;
 	}
 }

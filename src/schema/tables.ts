@@ -6,155 +6,120 @@ import * as ref from "@nerd-bible/ref";
 // 53 bit = 5.5e-7 <- Max safe integer, requires JS bigint to generate
 // 64 bit = 2.7e-10 <- Requires JS bigint to generate and read
 // https://kevingal.com/apps/collision.html
-const id = v.bigint().register("col", "PRIMARY KEY");
 const docId = v.bigint().register("col", "REFERENCES doc(id)");
+// For other tables to allow layering.
+const namespaceId = v.bigint().register("col", "REFERENCES namespace(id)");
 const lang = v.string(); // ISO-639
+export type Lang = v.Output<typeof lang>;
 const book = v.enum(ref.book.ids); // if scripture
 export type Book = v.Output<typeof book>;
 
-// A namespace for all other tables to allow layering without branching.
+export const namespace = v
+	.object({ id: v.bigint().register("col", "PRIMARY KEY"), name: v.string() })
+	.extendPartial({ short: v.string() });
+export type Namespace = v.Output<typeof namespace>;
+
 export const doc = v
-	.object({ id, lang })
-	.extendPartial({ createdAt: v.date(), title: v.string() });
+	.object({
+		namespace: namespaceId,
+		id: v.bigint().register("col", "PRIMARY KEY"),
+		lang,
+	})
+	.extendPartial({
+		createdAt: v.date(),
+		book, // if scripture
+		title: v.string(),
+	});
 export type Doc = v.Output<typeof doc>;
+// User tags and mark styles.
 export const docTag = v
 	.object({ doc: docId, tag: v.string() })
-	.extendPartial({ data: v.any() })
-	.register(
-		"extra",
-		"CREATE INDEX IF NOT EXISTS docTagTag ON docTag(tag, data)",
-	);
+	.extendPartial({ data: v.any() });
 export type DocTag = v.Output<typeof docTag>;
-export const scripture = v
-	.object({
-		doc: v.bigint().register("col", "PRIMARY KEY REFERENCES doc(id)"),
-		book,
-		code: v.string(),
-	})
-	.extendPartial({ urls: v.array(v.string()) });
-export type Scripture = v.Output<typeof scripture>;
-export const outline = v.object({
-	doc: docId,
-	scripture: v.bigint().register("col", "REFERENCES scripture(doc)"),
-	chapter: v.number(),
-	verse: v.number(),
-	level: v.number(),
-	text: v.string(),
-});
-export type Outline = v.Output<typeof outline>;
-export const highlight = v
-	.object({ doc: docId, id: v.bigint() })
-	.extendPartial({
-		name: v.string(),
-		backgroundColor: v.string(),
-		textDecoration: v.string(),
-	})
-	.register("table", "PRIMARY KEY (doc, id)");
-export type Highlight = v.Output<typeof highlight>;
-export const note = v
-	.object({ doc: docId, ref: docId, refStart: v.bigint() })
-	.extendPartial({ refEnd: v.bigint(), highlight: v.bigint() })
-	.register(
-		"table",
-		"FOREIGN KEY (doc, highlight) REFERENCES highlight(doc, id)",
-	)
-	.register(
-		"extra",
-		"CREATE INDEX IF NOT EXISTS noteDoc ON note(ref, refStart);",
-	);
-export type Note = v.Output<typeof note>;
-export const xref = v
-	.object({
-		doc: docId,
-		src: docId,
-		srcStart: v.bigint(),
-		dest: docId,
-		tag: v.string(),
-	})
-	.extendPartial({
-		srcEnd: v.bigint(),
-		destStart: v.bigint(),
-		destEnd: v.bigint(),
-	})
-	.register(
-		"table",
-		[
-			"FOREIGN KEY (src, srcStart) REFERENCES word(doc, id)",
-			"FOREIGN KEY (src, srcEnd) REFERENCES word(doc, id)",
-			"FOREIGN KEY (dest, destStart) REFERENCES word(doc, id)",
-			"FOREIGN KEY (dest, destEnd) REFERENCES word(doc, id)",
-		].join(",\n\t"),
-	);
-export type Xref = v.Output<typeof xref>;
 
 // Document content
 export const word = v
-	.object({ doc: docId, id: v.bigint() })
-	.extendPartial({ text: v.string() })
-	.register("table", "PRIMARY KEY (doc, id)")
-	.register(
-		"extra",
-		"CREATE INDEX IF NOT EXISTS wordLangText ON word(lang, text)",
-	);
+	.object({ doc: docId, pos: v.bigint(), text: v.string() })
+	.register("table", "PRIMARY KEY (doc, pos)");
 export type Word = v.Output<typeof word>;
-export const wordTag = v
+// h1 is reserved for `doc.title`
+// Use `outline` instead of h2-h6 in scripture.
+export const block = v
 	.object({
+		namespace: namespaceId,
 		doc: docId,
-		word: v.bigint(),
-		tag: v.enum([
-			"p", // paragraph
-			"c", // chapter
-			"v", // verse
-			"r", // bcv or (doc,word)
-			"l", // language if not document's language
-		]),
+		id: v.bigint(),
+		pos: v.bigint(),
+		tag: v.enum(["p", "q", "h2", "h3", "h4", "h5", "h6", "ol", "ul"]),
 	})
-	.extendPartial({ data: v.any() })
-	.register("table", "PRIMARY KEY (doc, word, tag)");
-export type WordTag = v.Output<typeof wordTag>;
-export const mark = v
-	.object({
-		doc: docId,
-		start: v.bigint(),
-		end: v.bigint(),
-		tag: v.enum([
-			"q", // quote
-			"em", // emphasis (italic)
-			"h", // heading
-			"strong", // strong (bold)
-			"span", // arbitrary
-		]),
+	.extendPartial({
+		parent: v.bigint(),
+		data: v.any(),
 	})
-	.extendPartial({ data: v.any() })
 	.register(
 		"table",
 		[
-			"PRIMARY KEY (doc, start, tag)",
-			"FOREIGN KEY (doc, start + 1) REFERENCES word(doc, id)",
-			"FOREIGN KEY (doc, end - 1) REFERENCES word(doc, id)",
+			"PRIMARY KEY (namespace, doc, id)",
+			"FOREIGN KEY (namespace, doc, parent) REFERENCES block(namespace, doc, id)",
 		].join(",\n\t"),
-	)
-	.register(
-		"extra",
-		"CREATE INDEX IF NOT EXISTS markStart ON mark(doc, tag, start)",
 	);
-export type Mark = v.Output<typeof mark>;
-export const list = v.object({
-	doc: docId,
-	start: v.bigint(),
-	end: v.bigint(),
-});
-export const listItem = v.object({
-	doc: docId,
-	start: v.bigint(),
-	level: v.number(),
-});
+export type Block = v.Output<typeof block>;
 
-// Search.
+// Document annotations
+export const outline = v
+	.object({
+		namespace: namespaceId,
+		doc: docId,
+		id: v.bigint(),
+		pos: v.bigint(),
+		chapter: v.number(),
+		verse: v.number(),
+	})
+	.extendPartial({ parent: v.bigint(), text: docId })
+	.register(
+		"table",
+		[
+			"PRIMARY KEY (namespace, doc, id)",
+			"FOREIGN KEY (namespace, doc, parent) REFERENCES outline(namespace, doc, id)",
+		].join(",\n\t"),
+	);
+export type Outline = v.Output<typeof outline>;
+export const mark = v
+	.object({
+		namespace: namespaceId,
+		doc: docId,
+		tag: v.string(),
+		start: v.bigint(),
+	})
+	.extendPartial({
+		end: v.bigint(),
+		data: v.any(),
+	});
+export type Mark = v.Output<typeof mark>;
+
+// Cross references
+export const xref = v
+	.object({
+		namespace: namespaceId,
+		fromDoc: docId,
+		fromStart: v.bigint(),
+		toDoc: docId,
+		toStart: v.bigint(),
+	})
+	.extendPartial({
+		fromEnd: v.bigint(),
+		toEnd: v.bigint(),
+	});
+export type Xref = v.Output<typeof xref>;
+export const xrefTag = v
+	.object({ namespace: namespaceId, doc: docId, tag: v.string() })
+	.extendPartial({ data: v.any() });
+export type XRefTag = v.Output<typeof xrefTag>;
+
 // This caching table is needed because:
 // 1. Search uses a sequence algorithm that requires selecting adjacent words.
-//    That would normally requires a full table scan, but with this it doesn't.
-// 2. Words are mapped 0->N during normalization.
+//    That requires a full table scan, but with this it doesn't.
+// 2. Words are mapped 1 -> 0..N during normalization.
 //
 // This table should NOT be version controlled.
 export const wordSearch = v
@@ -162,7 +127,7 @@ export const wordSearch = v
 		doc: docId,
 		word: v.bigint(),
 
-		plane: v.number(),
+		plane: v.number(), // Create boundaries sequences can't match across.
 		pos: v.bigint(),
 		stem: v.string(),
 	})
@@ -172,17 +137,14 @@ export const wordSearch = v
 	.register(
 		"table",
 		[
-			"PRIMARY KEY (doc, word)",
-			"FOREIGN KEY (doc, word) REFERENCES word(doc, id)",
-			"FOREIGN KEY (doc, wordEnd) REFERENCES word(doc, id)",
+			"PRIMARY KEY (doc, pos)",
+			"FOREIGN KEY (doc, word) REFERENCES word(doc, pos)",
+			"FOREIGN KEY (doc, wordEnd) REFERENCES word(doc, pos)",
 		].join(",\n\t"),
 	)
 	.register(
 		"extra",
-		[
-			"CREATE INDEX IF NOT EXISTS wordSearchPos ON wordSearch(pos)",
-			"CREATE INDEX IF NOT EXISTS wordSearchStem ON wordSearch(stem)",
-		].join(";\n"),
+		"CREATE INDEX IF NOT EXISTS wordSearchStem ON wordSearch(stem)",
 	);
 export type WordSearch = v.Output<typeof wordSearch>;
 
