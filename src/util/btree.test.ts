@@ -68,7 +68,7 @@ test("btree set, delete, min, max", () => {
 });
 
 test("balanced inserts", () => {
-	const tree = new BTree<bigint, string>(4);
+	const tree = new BTree<bigint, string>(3);
 
 	tree.set(4n, "2");
 	tree.set(8n, "2");
@@ -94,6 +94,14 @@ function treeSample() {
 	for (const [k, v] of map.entries()) tree.set(k, v);
 	return tree;
 }
+
+test("split", () => {
+	const tree = treeSample();
+
+	tree.split(14n);
+	console.log(toString(tree));
+	console.log(tree._path);
+});
 
 test("btree combines mark", () => {
 	const tree = treeSample();
@@ -129,10 +137,12 @@ test("btree combines mark", () => {
 
 test("btree doesn't combine blocks", () => {
 	const tree = treeSample();
+	console.log(toString(tree));
 
-	console.log(toString(tree));
+	tree.block(5n, 13n, { blockquote: {} });
 	tree.block(5n, 13n, { p: {} });
-	console.log(toString(tree));
+	tree.block(10n, 16n, { p: {} });
+	console.log(toString(tree))
 	// expect(tree.root).toEqual(
 	// 	new Internal<bigint, string>(
 	// 		[
@@ -141,7 +151,7 @@ test("btree doesn't combine blocks", () => {
 	// 				[new Leaf([" the", " beginning", " God"], [6n, 9n, 12n], 18)],
 	// 				[12n],
 	// 				18,
-	// 				{ p: {} },
+	// 				{ blockquote: {} },
 	// 			),
 	// 			new Internal<bigint, string>([new Leaf(["created"], [15n])], [15n]),
 	// 		],

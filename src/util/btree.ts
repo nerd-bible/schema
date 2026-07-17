@@ -172,13 +172,13 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 		return this._values[idx].get(key);
 	}
 
-	indexOfSet(key: K): number {
+	private indexOfInternal(key: K): number {
 		let idx = this.indexOf(key, -1);
 		if (idx < 0) {
 			idx ^= -1;
 			if (
-				idx >= this._values.length ||
-				this._values[idx - 1]?.length < this._values[idx].length
+				(idx == this._keys.length || this._values[idx].minKey() >= key) &&
+				idx > 0
 			)
 				idx--;
 		}
@@ -186,7 +186,7 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 	}
 
 	set(key: K, value: V, path: number[]): void {
-		const idx = this.indexOfSet(key);
+		const idx = this.indexOfInternal(key);
 		path.push(idx);
 		const child = this._values[idx];
 		child.set(key, value, path);
@@ -195,7 +195,7 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 	}
 
 	resolve(key: K, path: number[]) {
-		const idx = this.indexOfSet(key);
+		const idx = this.indexOfInternal(key);
 		const child = this._values[idx];
 
 		path.push(idx);
@@ -271,7 +271,6 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 	targetNodeSize: number;
 	minNodeSize: number;
 	root = new Internal<K, V>([new Leaf<K, V>()]);
-	_depth = 2;
 	_size = 0;
 	/** For balancing after delete/set/split */
 	_path: number[] = [];
@@ -292,10 +291,6 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 
 	get size(): number {
 		return this._size;
-	}
-
-	get depth(): number {
-		return this._depth;
 	}
 
 	minKey(): K {
@@ -343,7 +338,6 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 						this.root.length + right.length,
 						{ ...this.root._marks },
 					);
-					this._depth++;
 				}
 			}
 		}
@@ -361,7 +355,6 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 				if (grandparent && parent._values.length === 1) {
 					// hoist
 					grandparent._values = parent._values;
-					this._depth--;
 				}
 			}
 		}
@@ -386,7 +379,7 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 		return this._path;
 	}
 
-	split(key: K): void {
+	split(key: K, bias: -1 | 1 = -1): void {
 		const path = this.resolve(key);
 		const nodes = this.pathNodes(path);
 		const leaf = nodes[nodes.length - 1] as Leaf<K, V>;
@@ -396,10 +389,14 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 			const right = leaf.splitRight(leafIndex);
 			leafParent.adopt(right, path[path.length - 2]);
 		}
+		if (bias == 1) {
+			this._path[this._path.length - 2] += 1;
+			this._path[this._path.length - 1] = 0;
+		}
 	}
 
 	mark(low: K, high: K, marks: Marks) {
-		this.split(low);
+		this.split(low, 1);
 		const lowPath = this._path.slice();
 		this.split(high);
 		const highPath = this._path.slice();
@@ -429,20 +426,42 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 	}
 
 	block(low: K, high: K, marks: Marks) {
-		this.split(low);
-		const lowPath = this._path.slice();
+		this.split(low, 1);
+		const lowPath = this._path.slice(0);
 		this.split(high);
-		const highPath = this._path.slice();
+		const highPath = this.resolve(high);
 
-		// Decide if should toggle??
+		let leastCommonAncestor: Internal<K, V> = this.root;
+		let start = lowPath[0];
+		let end = highPath[0];
+		for (let i = 0; i < Math.min(lowPath.length, highPath.length) - 1; i++) {
+			if (lowPath[i] === highPath[i]) {
+				leastCommonAncestor = leastCommonAncestor._values[
+					lowPath[i]
+				] as Internal<K, V>;
+				start = lowPath[i + 1];
+				end = highPath[i + 1];
+			} else {
+				break;
+			}
+		}
+		console.log(toString(this));
+		console.log({ lowPath, highPath });
+		console.log({ leastCommonAncestor, start, end });
 
-		// move nodes
-		// for (const n of this.root.leaves(low, high)) {
-		// 	for (const t in marks) {
-		// 		if (count[t] === nodeCount) delete n.node._marks[t];
-		// 		else n.node._marks[t] = marks[t];
-		// 	}
-		// }
+		const block = new Internal<K, V>();
+		block._values = leastCommonAncestor._values.splice(
+			start,
+			end - start + 1,
+			block,
+		);
+		block._keys = leastCommonAncestor._keys.splice(
+			start,
+			end - start + 1,
+			leastCommonAncestor._keys[end],
+		);
+		block._length = block._values.reduce((acc, c) => acc + c.length, 0);
+		block._marks = marks;
 	}
 
 	*keys(low = this.minKey(), high = this.maxKey()): Generator<K> {
@@ -462,7 +481,7 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 export function toString(n: BTree<any, any> | Node<any, any>, depth = 0) {
 	let res = "";
 	if (n instanceof BTree) {
-		res += `l${pc.dim(n.root.length)} s${pc.dim(n.size)} d${pc.dim(n.depth)}\n`;
+		res += `l${pc.dim(n.root.length)} s${pc.dim(n.size)}\n`;
 		res += toString(n.root);
 		return res;
 	}

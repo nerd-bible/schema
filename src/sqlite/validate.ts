@@ -13,17 +13,16 @@ export async function validate(db: Db) {
 	for (const { id: docId, lang: docLang } of invalid) {
 		const wordSearch: WordSearch[] = [];
 		const words = await db.run(`
-select pos, text, coalesce(m.data, d.lang) as lang, if(m2.tag='ref', 1, 0) as isRef
+select pos, text, coalesce(m.data, d.lang) as lang
 from word
 join doc d on d.id=word.doc
 left join mark m on m.doc=word.doc and m.start=pos and m.tag='lang'
 left join mark m2 on m2.doc=word.doc and m2.start=pos and m2.tag='ref'
-where word.doc=${docId}
+where word.doc=${docId} and m2.tag!='ref'
 `);
 		let i = 0n;
-		for (const { pos: wordPos, text, lang: wordLang, isRef } of words) {
+		for (const { pos: wordPos, text, lang: wordLang } of words) {
 			const lang = wordLang ?? docLang;
-			if (isRef) continue;
 			const stemmer = stemmers[lang as keyof typeof stemmers];
 			if (!stemmer) throw new Error("no stemmer for lang " + lang);
 			const stem = stemmer(text);

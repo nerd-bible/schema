@@ -1,4 +1,4 @@
-import { Hasher } from "../hash.ts";
+import { Hasher } from "../util/hash.ts";
 import type { Doc } from "./builder.ts";
 import { Namespace } from "./builder.ts";
 import type { Book } from "./tables.ts";
