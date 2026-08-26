@@ -26,6 +26,7 @@
 	"dependencies": {
 		"@nerd-bible/ref": "^0.1.4",
 		"@nerd-bible/valio": "^0.1.19",
+		"@nerd-bible/wordgard": "^0.5.2-beta",
 		"picocolors": "^1.1.1"
 	},
 	"devDependencies": {
