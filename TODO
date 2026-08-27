@@ -1,0 +1,7 @@
+- [ ] wordgard word modeling
+	- [ ] chapter/verse
+	- [ ] paragraphs and headings have rangesets mapping to ids
+		- [ ] do not trust current tokenizer to be past tokenizer
+		- [ ] do not have to query db to know word ids for read/write
+- [ ] convert wordgard to/from tabular
+- [ ] i18n layer

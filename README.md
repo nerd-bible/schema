@@ -1,25 +1,21 @@
 # schema
 
-See the [canonical model](./src/typescript/schema.ts).
+Schemas and models for Biblical content and their notes.
 
-## Bible
+Builders to create models. Editor to view and edit models.
 
-[Doltlite](https://github.com/nerd-bible/doltlite) is used for querying and
-version control.
+Tests querying models.
 
-## Mutations
+Schemas:
+- [x] Tabular: stored in relational database
+- [ ] Editor: tree-based [Wordgard](https://wordgard.net/docs/guide/#h-documents)
+- [ ] Academic: [CoNLL-U](https://universaldependencies.org/format.html).
+- [ ] Bible publisher: [USFM](https://docs.usfm.bible/usfm/3.1.1/index.html)
 
-Doltlite doesn't store diffs. To allow for better automatic merge resolution,
-I'm thinking about doing small atomic commits and storing an "operation" in the
-commit message:
+## Converters
+Every model can has converters to/from the editor model.
 
-Insert left/right
-Join left/right (for deletes)
-Split left/right
-Update existing (not ID)
-
-Moving words is still unsolved.
-
+### Tabular
 ## Queries
 
 1. [x] Partial document with chapters, verses, headings, and notes

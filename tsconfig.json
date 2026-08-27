@@ -1,4 +1,7 @@
 {
 	"extends": "@nerd-bible/config/tsconfig.json",
-	"compilerOptions": { "types": ["node"] }
+	"compilerOptions": {
+		"types": ["node"],
+		"lib": ["esnext", "dom"]
+	}
 }

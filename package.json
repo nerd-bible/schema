@@ -21,16 +21,20 @@
 		"build": "tsc -p ./tsconfig.build.json",
 		"test": "node --test",
 		"fmt": "prettier --check --ignore-path .gitignore .",
-		"fmt-fix": "npm run fmt -- --write"
+		"fmt-fix": "npm run fmt -- --write",
+		"dev": "vite"
 	},
 	"dependencies": {
-		"@nerd-bible/ref": "^0.1.4",
+		"@nerd-bible/ref": "^0.1.5",
 		"@nerd-bible/valio": "^0.1.19",
-		"@nerd-bible/wordgard": "^0.5.2-beta",
-		"picocolors": "^1.1.1"
+		"fast-myers-diff": "^3.2.0",
+		"picocolors": "^1.1.1",
+		"wordgard": "npm:@nerd-bible/wordgard@^0.5.2-beta"
 	},
 	"devDependencies": {
-		"@nerd-bible/config": "^0.1.9"
+		"@nerd-bible/config": "^0.1.9",
+		"vite": "^8.2.2",
+		"vitest": "^4.1.11"
 	},
 	"prettier": "@nerd-bible/config/prettier"
 }
