@@ -35,19 +35,22 @@ export const correctChapters = Correction.onContent(Heading, (heading) => {
 	return null;
 });
 
-export const chapterStyles = Wordgard.styles({
-	h2: {
-		"&::before": {
-			content: "'Chapter '",
-		},
-	},
-});
-
-// const chapterDeco = Decoration.Tag.shape(Heading.of(2), tag => {
-// 	if (tag.param === 2) return Elt.mk("h2", ["Chapter ", 0]);
-// 	return Elt.mk("h2", [0]);
+// const chapterStyles = Wordgard.styles({
+// 	h2: {
+// 		"&::before": {
+// 			content: "'Chapter '",
+// 		},
+// 	},
 // });
 
+const chapterDeco = Decoration.Tag.shape(Heading.of(2), tag => {
+	if (tag.param === 2) return Elt.mk("h2", ["Chapter ", 0]);
+	return Elt.mk("h2", [0]);
+});
+
 export function chapter() {
-	return [correctChapters, chapterStyles];
+	return [
+		// correctChapters,
+		chapterDeco,
+	];
 }

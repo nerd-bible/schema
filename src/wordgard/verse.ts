@@ -10,7 +10,7 @@ const verseRegex = new RegExp(patterns.verse);
 const verseRegexSpace = new RegExp("^" + verseRegex.source + "$");
 const verseRegexInput = new RegExp(String.raw`(\^|\\?v\s+)`);
 
-const VerseNum = Plot.define("VerseNum", {
+export const VerseNum = Plot.define("VerseNum", {
 	inline: true,
 	inlineContent: Leaf.Text,
 	shape: { element: "sup" },

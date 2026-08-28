@@ -26,10 +26,10 @@
 	},
 	"dependencies": {
 		"@nerd-bible/ref": "^0.1.5",
-		"@nerd-bible/valio": "^0.1.19",
+		"@nerd-bible/valio": "^0.2.0",
 		"fast-myers-diff": "^3.2.0",
 		"picocolors": "^1.1.1",
-		"wordgard": "npm:@nerd-bible/wordgard@^0.5.2-beta"
+		"wordgard": "npm:@nerd-bible/wordgard@^0.5.2-beta2"
 	},
 	"devDependencies": {
 		"@nerd-bible/config": "^0.1.9",

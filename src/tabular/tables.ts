@@ -81,11 +81,14 @@ export type Word = v.Output<typeof word>;
 export const ref = v
 	.object({
 		doc: docId,
-		chapter: v.number(),
-		verse: v.number(),
 		pos: v.bigint(),
+		chapter: v.number(),
+	})
+	.extendPartial({
+		verse: v.number(),
 	})
 	.register("table", "PRIMARY KEY (doc, chapter, verse)");
+export type Ref = v.Output<typeof ref>;
 
 // Annotations
 export const mark = v

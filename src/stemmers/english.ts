@@ -63,9 +63,9 @@ const step4 =
 
 const stopWords = new Set(["a", "an", "and", "the", "of", "at", "in"]);
 
-export default function english(value: string): string | null {
+export default function english(value: string): string | undefined {
 	let result = value.toLowerCase().replace(/\p{P}|\p{Z}/gv, "");
-	if (stopWords.has(result)) return null;
+	if (stopWords.has(result)) return;
 	if (result.length < 3) return result;
 
 	// leading y shouldn't match regexes

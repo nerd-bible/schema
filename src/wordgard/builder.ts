@@ -1,6 +1,5 @@
 import { builtin64 } from "../util/rand.ts";
 const defaultLoadFactor = 0.8;
-const maxInt = BigInt("0x" + "F".repeat(16));
 
 function pushText(text: string, lang = this.meta.lang) {
 	const tokenizeSpan = (start: number, end: number) => {
