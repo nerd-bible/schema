@@ -1,12 +1,14 @@
-import { connect } from '@tursodatabase/database';
-import { Database } from '@tursodatabase/database';
+import { Database } from "@tursodatabase/database";
 
-import { drizzle } from 'drizzle-orm/tursodatabase/database';
-import { doc } from './schema.ts';
+import { drizzle } from "drizzle-orm/tursodatabase/database";
+import { doc } from "./schema.ts";
+import { readFileSync } from "node:fs";
 
-const client = new Database(':memory:');
+const client = new Database(":memory");
 const db = drizzle({ client });
-const result = await db.select().from(doc);
+
+const schema = readFileSync("./migrations/turso/1.sql", "utf8");
+await client.exec(schema);
 
 // const db = await connect(':memory:', {
 // 	experimental: ["custom_types"],
