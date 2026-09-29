@@ -1,0 +1,621 @@
+{
+  "dialect": "sqlite",
+  "id": "a8e2b020-8797-4fe0-a781-385eefcb1570",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "version": "7",
+  "ddl": [
+    {
+      "name": "author",
+      "entityType": "tables"
+    },
+    {
+      "name": "block",
+      "entityType": "tables"
+    },
+    {
+      "name": "change_set",
+      "entityType": "tables"
+    },
+    {
+      "name": "doc",
+      "entityType": "tables"
+    },
+    {
+      "name": "doc_credit",
+      "entityType": "tables"
+    },
+    {
+      "name": "foo",
+      "entityType": "tables"
+    },
+    {
+      "name": "mark",
+      "entityType": "tables"
+    },
+    {
+      "name": "xref",
+      "entityType": "tables"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "author"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "author"
+    },
+    {
+      "type": "text[]",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "urls",
+      "entityType": "columns",
+      "table": "author"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "doc",
+      "entityType": "columns",
+      "table": "block"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "block"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "type",
+      "entityType": "columns",
+      "table": "block"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "param",
+      "entityType": "columns",
+      "table": "block"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "text_content",
+      "entityType": "columns",
+      "table": "block"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "content",
+      "entityType": "columns",
+      "table": "block"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "content_length",
+      "entityType": "columns",
+      "table": "block"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "parent",
+      "entityType": "columns",
+      "table": "block"
+    },
+    {
+      "type": "blob",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "change_set"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "doc",
+      "entityType": "columns",
+      "table": "change_set"
+    },
+    {
+      "type": "timestamp",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "timestamp",
+      "entityType": "columns",
+      "table": "change_set"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "changes",
+      "entityType": "columns",
+      "table": "change_set"
+    },
+    {
+      "type": "blob[]",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "parents",
+      "entityType": "columns",
+      "table": "change_set"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "doc"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "lang",
+      "entityType": "columns",
+      "table": "doc"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "book",
+      "entityType": "columns",
+      "table": "doc"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "title",
+      "entityType": "columns",
+      "table": "doc"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "doc",
+      "entityType": "columns",
+      "table": "doc_credit"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "author",
+      "entityType": "columns",
+      "table": "doc_credit"
+    },
+    {
+      "type": "text[]",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credits",
+      "entityType": "columns",
+      "table": "doc_credit"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "foo"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "mark"
+    },
+    {
+      "type": "text[]",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "tags",
+      "entityType": "columns",
+      "table": "mark"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "param",
+      "entityType": "columns",
+      "table": "mark"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "doc",
+      "entityType": "columns",
+      "table": "mark"
+    },
+    {
+      "type": "blob",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "version",
+      "entityType": "columns",
+      "table": "mark"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "start_pos",
+      "entityType": "columns",
+      "table": "mark"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "end_pos",
+      "entityType": "columns",
+      "table": "mark"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "xref"
+    },
+    {
+      "type": "text[]",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "tags",
+      "entityType": "columns",
+      "table": "xref"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "from_doc",
+      "entityType": "columns",
+      "table": "xref"
+    },
+    {
+      "type": "blob",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "from_doc_version",
+      "entityType": "columns",
+      "table": "xref"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "from_doc_start_pos",
+      "entityType": "columns",
+      "table": "xref"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "from_doc_end_pos",
+      "entityType": "columns",
+      "table": "xref"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "to_doc",
+      "entityType": "columns",
+      "table": "xref"
+    },
+    {
+      "type": "blob",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "to_doc_version",
+      "entityType": "columns",
+      "table": "xref"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "to_doc_start_pos",
+      "entityType": "columns",
+      "table": "xref"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "to_doc_end_pos",
+      "entityType": "columns",
+      "table": "xref"
+    },
+    {
+      "columns": [
+        "doc"
+      ],
+      "tableTo": "doc",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_block_doc_doc_id_fk",
+      "entityType": "fks",
+      "table": "block"
+    },
+    {
+      "columns": [
+        "doc",
+        "parent"
+      ],
+      "tableTo": "block",
+      "columnsTo": [
+        "doc",
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_block_doc_parent_block_doc_id_fk",
+      "entityType": "fks",
+      "table": "block"
+    },
+    {
+      "columns": [
+        "doc"
+      ],
+      "tableTo": "doc",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_change_set_doc_doc_id_fk",
+      "entityType": "fks",
+      "table": "change_set"
+    },
+    {
+      "columns": [
+        "doc"
+      ],
+      "tableTo": "doc",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_doc_credit_doc_doc_id_fk",
+      "entityType": "fks",
+      "table": "doc_credit"
+    },
+    {
+      "columns": [
+        "author"
+      ],
+      "tableTo": "author",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_doc_credit_author_author_id_fk",
+      "entityType": "fks",
+      "table": "doc_credit"
+    },
+    {
+      "columns": [
+        "doc",
+        "version"
+      ],
+      "tableTo": "change_set",
+      "columnsTo": [
+        "doc",
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_mark_doc_version_change_set_doc_id_fk",
+      "entityType": "fks",
+      "table": "mark"
+    },
+    {
+      "columns": [
+        "doc",
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "block_pk",
+      "entityType": "pks",
+      "table": "block"
+    },
+    {
+      "columns": [
+        "doc",
+        "author"
+      ],
+      "nameExplicit": false,
+      "name": "doc_credit_pk",
+      "entityType": "pks",
+      "table": "doc_credit"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "author_pk",
+      "table": "author",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "change_set_pk",
+      "table": "change_set",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "doc_pk",
+      "table": "doc",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "foo_pk",
+      "table": "foo",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "mark_pk",
+      "table": "mark",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "xref_pk",
+      "table": "xref",
+      "entityType": "pks"
+    }
+  ],
+  "renames": []
+}
