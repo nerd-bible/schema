@@ -1,7 +1,18 @@
-import { int, sqliteTable, text, customType, primaryKey, blob, foreignKey } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import {
+	int,
+	sqliteTable,
+	text,
+	customType,
+	primaryKey,
+	blob,
+	foreignKey,
+} from "drizzle-orm/sqlite-core";
 
 export const doc = sqliteTable("doc", {
-	id: int().primaryKey(),
+	id: int()
+		.primaryKey()
+		.default(sql`(unixepoch() << 16) + (abs(random()) % (1 << 16))`),
 	lang: text().notNull(),
 	book: text(),
 	title: text(),
@@ -9,7 +20,7 @@ export const doc = sqliteTable("doc", {
 
 const textList = customType<{ data: string[] }>({
 	dataType() {
-		return 'text[]';
+		return "text[]";
 	},
 });
 
@@ -19,23 +30,29 @@ export const author = sqliteTable("author", {
 	urls: textList(),
 });
 
-export const docCredit = sqliteTable("doc_credit", {
-	doc: int().notNull().references(() => doc.id),
-	author: int().notNull().references(() => author.id),
-	credits: textList(),
-}, t => [
-		primaryKey({ columns: [t.doc, t.author] })
-	]);
+export const docCredit = sqliteTable(
+	"doc_credit",
+	{
+		doc: int()
+			.notNull()
+			.references(() => doc.id),
+		author: int()
+			.notNull()
+			.references(() => author.id),
+		credits: textList(),
+	},
+	(t) => [primaryKey({ columns: [t.doc, t.author] })],
+);
 
 const timestamp = customType<{ data: Date }>({
 	dataType() {
-		return 'timestamp';
+		return "timestamp";
 	},
 });
 
 const blobList = customType<{ data: Uint8Array }>({
 	dataType() {
-		return 'blob[]';
+		return "blob[]";
 	},
 });
 
@@ -50,34 +67,47 @@ export const changeSet = sqliteTable("change_set", {
 const json = customType<{ data: any }>({
 	dataType() {
 		return "text";
-	}
+	},
 });
 
-export const block = sqliteTable("block", {
-	doc: int().notNull().references(() => doc.id),
-	id: int().notNull(),
-	type: text().notNull(),
-	param: json(),
-	text_content: text(),
-	content: json(),
-	content_length: int(),
-	parent: int(),
-}, t => [
+export const block = sqliteTable(
+	"block",
+	{
+		doc: int()
+			.notNull()
+			.references(() => doc.id),
+		id: int().notNull(),
+		type: text().notNull(),
+		param: json(),
+		text_content: text(),
+		content: json(),
+		content_length: int(),
+		parent: int(),
+	},
+	(t) => [
 		primaryKey({ columns: [t.doc, t.id] }),
-		foreignKey({ columns: [t.doc, t.parent], foreignColumns: [t.doc, t.id] })
-	]);
+		foreignKey({ columns: [t.doc, t.parent], foreignColumns: [t.doc, t.id] }),
+	],
+);
 
-export const mark = sqliteTable("mark", {
-	id: int().primaryKey(),
-	tags: textList(),
-	param: json(),
-	doc: int(),
-	version: blob(),
-	start_pos: int().notNull(),
-	end_pos: int(),
-}, t => [
-		foreignKey({ columns: [t.doc, t.version], foreignColumns: [changeSet.doc, changeSet.id] }),
-	]);
+export const mark = sqliteTable(
+	"mark",
+	{
+		id: int().primaryKey(),
+		tags: textList(),
+		param: json(),
+		doc: int(),
+		version: blob(),
+		start_pos: int().notNull(),
+		end_pos: int(),
+	},
+	(t) => [
+		foreignKey({
+			columns: [t.doc, t.version],
+			foreignColumns: [changeSet.doc, changeSet.id],
+		}),
+	],
+);
 
 export const xref = sqliteTable("xref", {
 	id: int().primaryKey(),
