@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { expect } from "expect";
-import { BTree, Internal, Leaf, toString } from "./btree.ts";
+import { BTree, toString } from "./btree.ts";
 
 function shuffle<T>(arr: T[]): T[] {
 	let i = arr.length;
@@ -101,64 +101,6 @@ test("split", () => {
 	tree.split(14n);
 	console.log(toString(tree));
 	console.log(tree._path);
-});
-
-test("btree combines mark", () => {
-	const tree = treeSample();
-
-	tree.mark(5n, 13n, { em: {} });
-	expect(tree.root).toEqual(
-		new Internal<bigint, string>(
-			[
-				new Leaf(["in"], [3n]),
-				new Leaf([" the", " beginning", " God"], [6n, 9n, 12n], 18, {
-					em: {},
-				}),
-				new Leaf([" created"], [15n]),
-			],
-			[3n, 12n, 15n],
-			28,
-		),
-	);
-	tree.mark(2n, 4n, { em: {} });
-	expect(tree.root).toEqual(
-		new Internal<bigint, string>(
-			[
-				new Leaf(["in", " the", " beginning", " God"], [3n, 6n, 9n, 12n], 20, {
-					em: {},
-				}),
-				new Leaf([" created"], [15n]),
-			],
-			[12n, 15n],
-			28,
-		),
-	);
-});
-
-test("btree doesn't combine blocks", () => {
-	const tree = treeSample();
-	console.log(toString(tree));
-
-	tree.block(5n, 13n, { blockquote: {} });
-	tree.block(5n, 13n, { p: {} });
-	tree.block(10n, 16n, { p: {} });
-	console.log(toString(tree))
-	// expect(tree.root).toEqual(
-	// 	new Internal<bigint, string>(
-	// 		[
-	// 			new Internal<bigint, string>([new Leaf(["in"], [3n])], [3n]),
-	// 			new Internal<bigint, string>(
-	// 				[new Leaf([" the", " beginning", " God"], [6n, 9n, 12n], 18)],
-	// 				[12n],
-	// 				18,
-	// 				{ blockquote: {} },
-	// 			),
-	// 			new Internal<bigint, string>([new Leaf(["created"], [15n])], [15n]),
-	// 		],
-	// 		[3n, 12n, 15n],
-	// 		28,
-	// 	),
-	// );
 });
 
 test("btree getpos", () => {

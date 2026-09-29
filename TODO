@@ -5,3 +5,13 @@
 		- [ ] do not have to query db to know word ids for read/write
 - [ ] convert wordgard to/from tabular
 - [ ] i18n layer
+
+
+on doc update want minimum diff:
+- to store doc changes (text insertion)
+- to update doc index
+
+p
+In the beginning God created the heavens and the earth. Now the earth was formless and void, and darkness was over the surface of the deep. And the Spirit of God was hovering over the surface of the waters.
+
+

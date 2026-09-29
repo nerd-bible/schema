@@ -194,12 +194,12 @@ export class Internal<K extends Comparable, V extends Length> extends Node<
 		this._length += value.length;
 	}
 
-	resolve(key: K, path: number[]) {
+	resolve(key: K, outPath: number[]) {
 		const idx = this.indexOfInternal(key);
 		const child = this._values[idx];
 
-		path.push(idx);
-		child.resolve(key, path);
+		outPath.push(idx);
+		child.resolve(key, outPath);
 	}
 
 	delete(key: K, path: number[]): number {
@@ -323,7 +323,7 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 		return nodes;
 	}
 
-	balanceSplitting(path: number[] = this._path) {
+	protected balanceSplitting(path: number[] = this._path) {
 		const nodes = this.pathNodes(path);
 		for (let i = nodes.length - 1; i >= 0; i--) {
 			const node = nodes[i];
@@ -343,7 +343,7 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 		}
 	}
 
-	balanceMerging(path: number[] = this._path) {
+	protected balanceMerging(path: number[] = this._path) {
 		const nodes = this.pathNodes(path);
 		for (let i = nodes.length - 2; i >= 0; i--) {
 			const parent = nodes[i] as Internal<K, V>;
@@ -393,75 +393,6 @@ export class BTree<K extends Comparable = any, V extends Length = any> {
 			this._path[this._path.length - 2] += 1;
 			this._path[this._path.length - 1] = 0;
 		}
-	}
-
-	mark(low: K, high: K, marks: Marks) {
-		this.split(low, 1);
-		const lowPath = this._path.slice();
-		this.split(high);
-		const highPath = this._path.slice();
-
-		// Decide if should toggle
-		let nodeCount = 0;
-		const count: Record<string, number> = {};
-		for (const n of this.root.leaves(low, high)) {
-			for (const t in n.node._marks) {
-				count[t] ??= 0;
-				count[t]++;
-			}
-			nodeCount++;
-		}
-
-		for (const n of this.root.leaves(low, high)) {
-			for (const t in marks) {
-				if (count[t] === nodeCount) delete n.node._marks[t];
-				else n.node._marks[t] = marks[t];
-			}
-		}
-
-		// TODO: optimize `balanceMerging` to take multiple paths and not redo work
-		// for common ancestors
-		this.balanceMerging(lowPath);
-		this.balanceMerging(highPath);
-	}
-
-	block(low: K, high: K, marks: Marks) {
-		this.split(low, 1);
-		const lowPath = this._path.slice(0);
-		this.split(high);
-		const highPath = this.resolve(high);
-
-		let leastCommonAncestor: Internal<K, V> = this.root;
-		let start = lowPath[0];
-		let end = highPath[0];
-		for (let i = 0; i < Math.min(lowPath.length, highPath.length) - 1; i++) {
-			if (lowPath[i] === highPath[i]) {
-				leastCommonAncestor = leastCommonAncestor._values[
-					lowPath[i]
-				] as Internal<K, V>;
-				start = lowPath[i + 1];
-				end = highPath[i + 1];
-			} else {
-				break;
-			}
-		}
-		console.log(toString(this));
-		console.log({ lowPath, highPath });
-		console.log({ leastCommonAncestor, start, end });
-
-		const block = new Internal<K, V>();
-		block._values = leastCommonAncestor._values.splice(
-			start,
-			end - start + 1,
-			block,
-		);
-		block._keys = leastCommonAncestor._keys.splice(
-			start,
-			end - start + 1,
-			leastCommonAncestor._keys[end],
-		);
-		block._length = block._values.reduce((acc, c) => acc + c.length, 0);
-		block._marks = marks;
 	}
 
 	*keys(low = this.minKey(), high = this.maxKey()): Generator<K> {
