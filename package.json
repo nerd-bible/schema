@@ -27,11 +27,9 @@
 	},
 	"dependencies": {
 		"@nerd-bible/ref": "^0.1.5",
-		"@nerd-bible/valio": "^0.2.0",
-		"@tursodatabase/database-wasm": "^0.8.1",
 		"drizzle-orm": "^1.0.0-rc.4",
 		"fast-myers-diff": "^3.2.0",
-		"wordgard": "npm:@nerd-bible/wordgard@^0.5.2-beta2"
+		"wordgard": "npm:@nerd-bible/wordgard@^0.5.3-beta4"
 	},
 	"devDependencies": {
 		"@nerd-bible/config": "^0.1.9",
