@@ -5,7 +5,6 @@ import {
 	text,
 	customType,
 	primaryKey,
-	blob,
 	foreignKey,
 } from "drizzle-orm/sqlite-core";
 
@@ -19,9 +18,7 @@ export const doc = sqliteTable("doc", {
 });
 
 const textList = customType<{ data: string[] }>({
-	dataType() {
-		return "text[]";
-	},
+	dataType: () => "text[]",
 });
 
 export const author = sqliteTable("author", {
@@ -44,39 +41,40 @@ export const docCredit = sqliteTable(
 	(t) => [primaryKey({ columns: [t.doc, t.author] })],
 );
 
-const timestamp = customType<{ data: Date }>({
-	dataType() {
-		return "timestamp";
-	},
+const timestamp = customType<{ data: Date; driverData: string }>({
+	dataType: () => "timestamp",
+	fromDriver: (value) => new Date(value),
+	toDriver: (value: Date) => sql`${value.toISOString()}`,
 });
 
-const blobList = customType<{ data: Uint8Array }>({
-	dataType() {
-		return "blob[]";
-	},
+// only good for small blobs
+const blob = customType<{ data: Uint8Array; driverData: Buffer | Uint8Array }>({
+	dataType: () => "blob",
+	fromDriver: (value) => new Uint8Array(value),
+	toDriver: (value) => sql`unhex(${value.toHex()})`,
+});
+
+const blobList = customType<{ data: Uint8Array[] }>({
+	dataType: () => "blob[]",
 });
 
 export const changeSet = sqliteTable("change_set", {
-	id: blob().primaryKey(), // sha256 of parents, timestamp, and changeset
+	id: blob().primaryKey(), // sha256 of rest of fields
 	doc: int().references(() => doc.id),
+	author: text(),
 	timestamp: timestamp(),
+	message: text(),
 	changes: text(),
 	parents: blobList(),
 });
 
 const json = customType<{
-	data: any,
-	driverData: string,
+	data: any;
+	driverData: string;
 }>({
-	dataType() {
-		return "jsonb";
-	},
-	fromDriver(value: string) {
-		return JSON.parse(value);
-	},
-	toDriver(value: any) {
-		return sql`${JSON.stringify(value)}`;
-	},
+	dataType: () => "jsonb",
+	fromDriver: (value) => JSON.parse(value),
+	toDriver: (value) => sql`${JSON.stringify(value)}`,
 });
 
 export const plot = sqliteTable(

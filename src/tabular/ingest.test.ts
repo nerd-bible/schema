@@ -1,7 +1,7 @@
 // db
 import { Database } from "@tursodatabase/database";
 import { drizzle } from "drizzle-orm/tursodatabase/database";
-import { plot, doc } from "./schema.ts";
+import { plot, doc, changeSet } from "./schema.ts";
 import { readFileSync } from "node:fs";
 import type { InferInsertModel } from "drizzle-orm";
 // wordgard
@@ -10,6 +10,7 @@ import book from "../wordgard/book.ts";
 import { GardState } from "wordgard/state";
 import { Leaf, Plot } from "wordgard/doc";
 import { VerseNum } from "../wordgard/verse.ts";
+import { Hasher } from "../util/hash.ts";
 
 async function initSchema() {
 	const client = new Database("test.db", {
@@ -43,7 +44,6 @@ const docId = (
 db.select().from(doc).get;
 
 // make an initial commit
-// const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
 
 // row per-plot
 type Row = InferInsertModel<typeof plot>;
@@ -120,4 +120,18 @@ function pushRows(node: Leaf | Plot, parent?: number) {
 
 wg.doc.iterate((node) => pushRows(node));
 await db.insert(plot).values(rows);
+
+const cs: Omit<InferInsertModel<typeof changeSet>, "id"> = {
+	author: "BSB",
+	doc: docId,
+	message: "Initial commit",
+	timestamp: new Date(),
+};
+const hasher = new Hasher("SHA-256");
+await hasher.any(rows);
+await hasher.any(cs);
+const bytes = new Uint8Array(hasher.hash);
+console.log(bytes.toHex());
+
+await db.insert(changeSet).values({ id: bytes, ...cs });
 await db.$client.close();

@@ -1,6 +1,6 @@
 {
   "dialect": "sqlite",
-  "id": "391fedf3-7557-4bd2-bd70-267e5738ba0e",
+  "id": "4d82d6b8-60bb-4f61-ba09-6328ede0038f",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -159,12 +159,32 @@
       "table": "change_set"
     },
     {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "author",
+      "entityType": "columns",
+      "table": "change_set"
+    },
+    {
       "type": "timestamp",
       "notNull": false,
       "autoincrement": false,
       "default": null,
       "generated": null,
       "name": "timestamp",
+      "entityType": "columns",
+      "table": "change_set"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "message",
       "entityType": "columns",
       "table": "change_set"
     },

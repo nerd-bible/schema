@@ -18,7 +18,9 @@ CREATE TABLE `author` (
 CREATE TABLE `change_set` (
 	`id` blob PRIMARY KEY,
 	`doc` integer,
+	`author` text,
 	`timestamp` timestamp,
+	`message` text,
 	`changes` text,
 	`parents` blob[],
 	CONSTRAINT `fk_change_set_doc_doc_id_fk` FOREIGN KEY (`doc`) REFERENCES `doc`(`id`)
