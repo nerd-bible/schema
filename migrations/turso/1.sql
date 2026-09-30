@@ -27,7 +27,8 @@ CREATE TABLE `change_set` (
 ) STRICT;
 
 CREATE TABLE `doc` (
-	`id` integer PRIMARY KEY DEFAULT ((unixepoch() << 16) + (abs(random()) % (1 << 16))),
+	`id` integer PRIMARY KEY,
+	`version` blob,
 	`lang` text NOT NULL,
 	`book` text,
 	`title` text

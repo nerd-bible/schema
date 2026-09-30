@@ -81,6 +81,10 @@ export class Hasher {
 				return this.object(a);
 			case "undefined":
 				return this.undefined();
+			case "function":
+				return;
+			case "symbol":
+				return this.string(a.toString());
 			default:
 				throw Error("cannot hash " + a);
 		}

@@ -19,7 +19,7 @@
 	],
 	"scripts": {
 		"build": "tsc -p ./tsconfig.build.json",
-		"generate": "node ./src/generate-migration.ts",
+		"migrate": "node ./src/generateMigration.ts",
 		"test": "node --test",
 		"fmt": "prettier --check --ignore-path .gitignore .",
 		"fmt-fix": "npm run fmt -- --write",
@@ -29,6 +29,7 @@
 		"@nerd-bible/ref": "^0.1.5",
 		"drizzle-orm": "^1.0.0-rc.4",
 		"fast-myers-diff": "^3.2.0",
+		"fractional-indexing": "^4.0.0",
 		"wordgard": "npm:@nerd-bible/wordgard@^0.5.3-beta4"
 	},
 	"devDependencies": {

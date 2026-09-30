@@ -1,6 +1,6 @@
 {
   "dialect": "sqlite",
-  "id": "4d82d6b8-60bb-4f61-ba09-6328ede0038f",
+  "id": "295bc4d1-feed-44ed-8ef3-9f112c4ca27e",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -212,9 +212,19 @@
       "type": "integer",
       "notNull": false,
       "autoincrement": false,
-      "default": "((unixepoch() << 16) + (abs(random()) % (1 << 16)))",
+      "default": null,
       "generated": null,
       "name": "id",
+      "entityType": "columns",
+      "table": "doc"
+    },
+    {
+      "type": "blob",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "version",
       "entityType": "columns",
       "table": "doc"
     },

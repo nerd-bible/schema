@@ -3,7 +3,7 @@ import {
 	generateDrizzleJson,
 	generateMigration,
 } from "drizzle-kit/payload/sqlite";
-import * as schema from "./tabular/schema.ts";
+import * as schema from "./models/tabular/schema.ts";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 

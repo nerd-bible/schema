@@ -10,7 +10,8 @@ import book from "../wordgard/book.ts";
 import { GardState } from "wordgard/state";
 import { Leaf, Plot } from "wordgard/doc";
 import { VerseNum } from "../wordgard/verse.ts";
-import { Hasher } from "../util/hash.ts";
+import { Hasher } from "../../util/hash.ts";
+import { tsid64 } from "../../util/rand.ts";
 
 async function initSchema() {
 	const client = new Database("test.db", {
@@ -37,11 +38,7 @@ const wg = GardState.create({
 });
 
 const db = await initSchema();
-const docId = (
-	await db.insert(doc).values([{ lang: "eng", book: "gen", title: "BSB" }])
-).lastInsertRowid;
-
-db.select().from(doc).get;
+const docId = tsid64();
 
 // make an initial commit
 
@@ -119,7 +116,6 @@ function pushRows(node: Leaf | Plot, parent?: number) {
 }
 
 wg.doc.iterate((node) => pushRows(node));
-await db.insert(plot).values(rows);
 
 const cs: Omit<InferInsertModel<typeof changeSet>, "id"> = {
 	author: "BSB",
@@ -130,8 +126,13 @@ const cs: Omit<InferInsertModel<typeof changeSet>, "id"> = {
 const hasher = new Hasher("SHA-256");
 await hasher.any(rows);
 await hasher.any(cs);
-const bytes = new Uint8Array(hasher.hash);
-console.log(bytes.toHex());
+const version = new Uint8Array(hasher.hash);
+console.log(version.toHex());
 
-await db.insert(changeSet).values({ id: bytes, ...cs });
+await db.transaction(async tx => {
+	await tx.insert(doc).values({ id: docId, version: version, lang: "eng", book: "gen", title: "BSB" })
+	await tx.insert(plot).values(rows);
+	await tx.insert(changeSet).values({ id: version, ...cs });
+});
+
 await db.$client.close();
