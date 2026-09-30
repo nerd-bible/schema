@@ -1,21 +1,18 @@
+CREATE TABLE `annotation` (
+	`id` integer PRIMARY KEY,
+	`tags` text[],
+	`param` jsonb,
+	`doc` integer,
+	`version` blob,
+	`start_pos` integer NOT NULL,
+	`end_pos` integer,
+	CONSTRAINT `fk_annotation_doc_version_change_set_doc_id_fk` FOREIGN KEY (`doc`,`version`) REFERENCES `change_set`(`doc`,`id`)
+) STRICT;
+
 CREATE TABLE `author` (
 	`id` integer PRIMARY KEY,
 	`name` text NOT NULL,
 	`urls` text[]
-) STRICT;
-
-CREATE TABLE `block` (
-	`doc` integer NOT NULL,
-	`id` integer NOT NULL,
-	`type` text NOT NULL,
-	`param` text,
-	`text_content` text,
-	`content` text,
-	`content_length` integer,
-	`parent` integer,
-	CONSTRAINT `block_pk` PRIMARY KEY(`doc`, `id`),
-	CONSTRAINT `fk_block_doc_doc_id_fk` FOREIGN KEY (`doc`) REFERENCES `doc`(`id`),
-	CONSTRAINT `fk_block_doc_parent_block_doc_id_fk` FOREIGN KEY (`doc`,`parent`) REFERENCES `block`(`doc`,`id`)
 ) STRICT;
 
 CREATE TABLE `change_set` (
@@ -28,7 +25,7 @@ CREATE TABLE `change_set` (
 ) STRICT;
 
 CREATE TABLE `doc` (
-	`id` integer PRIMARY KEY,
+	`id` integer PRIMARY KEY DEFAULT ((unixepoch() << 16) + (abs(random()) % (1 << 16))),
 	`lang` text NOT NULL,
 	`book` text,
 	`title` text
@@ -47,15 +44,19 @@ CREATE TABLE `foo` (
 	`id` integer PRIMARY KEY
 ) STRICT;
 
-CREATE TABLE `mark` (
-	`id` integer PRIMARY KEY,
-	`tags` text[],
-	`param` text,
-	`doc` integer,
-	`version` blob,
-	`start_pos` integer NOT NULL,
-	`end_pos` integer,
-	CONSTRAINT `fk_mark_doc_version_change_set_doc_id_fk` FOREIGN KEY (`doc`,`version`) REFERENCES `change_set`(`doc`,`id`)
+CREATE TABLE `plot` (
+	`doc` integer NOT NULL,
+	`id` integer NOT NULL,
+	`type` text NOT NULL,
+	`param` jsonb,
+	`marks` jsonb,
+	`length` integer,
+	`parent` integer,
+	`text_content` text,
+	`content` jsonb,
+	CONSTRAINT `plot_pk` PRIMARY KEY(`doc`, `id`),
+	CONSTRAINT `fk_plot_doc_doc_id_fk` FOREIGN KEY (`doc`) REFERENCES `doc`(`id`),
+	CONSTRAINT `fk_plot_doc_parent_plot_doc_id_fk` FOREIGN KEY (`doc`,`parent`) REFERENCES `plot`(`doc`,`id`)
 ) STRICT;
 
 CREATE TABLE `xref` (

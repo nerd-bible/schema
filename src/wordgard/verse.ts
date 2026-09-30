@@ -3,14 +3,13 @@ import { ChangeSet, Leaf, Plot } from "wordgard/doc";
 import { InputRule, KeyBinding, Wordgard } from "wordgard/editor";
 import { Command, Menu } from "wordgard/command";
 import { history } from "wordgard/history";
-import { patterns } from "@nerd-bible/ref";
 import { diff } from "fast-myers-diff";
 
-const verseRegex = new RegExp(patterns.verse);
+const verseRegex = new RegExp("(\\d+)");
 const verseRegexSpace = new RegExp("^" + verseRegex.source + "$");
 const verseRegexInput = new RegExp(String.raw`(\^|\\?v\s+)`);
 
-export const VerseNum = Plot.define("VerseNum", {
+export const VerseNum = Plot.define("v", {
 	inline: true,
 	inlineContent: Leaf.Text,
 	shape: { element: "sup" },

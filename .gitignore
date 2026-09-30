@@ -5,4 +5,6 @@ tmp
 .DS_Store
 generated
 *.tsbuildinfo
-sample.db
+test.db
+test.db-shm
+test.db-wal

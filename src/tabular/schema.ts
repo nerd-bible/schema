@@ -12,7 +12,7 @@ import {
 export const doc = sqliteTable("doc", {
 	id: int()
 		.primaryKey()
-		.default(sql`(unixepoch() << 16) + (abs(random()) % (1 << 16))`),
+		.default(sql`((unixepoch() << 16) + (abs(random()) % (1 << 16)))`),
 	lang: text().notNull(),
 	book: text(),
 	title: text(),
@@ -64,14 +64,23 @@ export const changeSet = sqliteTable("change_set", {
 	parents: blobList(),
 });
 
-const json = customType<{ data: any }>({
+const json = customType<{
+	data: any,
+	driverData: string,
+}>({
 	dataType() {
-		return "text";
+		return "jsonb";
+	},
+	fromDriver(value: string) {
+		return JSON.parse(value);
+	},
+	toDriver(value: any) {
+		return sql`${JSON.stringify(value)}`;
 	},
 });
 
-export const block = sqliteTable(
-	"block",
+export const plot = sqliteTable(
+	"plot",
 	{
 		doc: int()
 			.notNull()
@@ -79,10 +88,11 @@ export const block = sqliteTable(
 		id: int().notNull(),
 		type: text().notNull(),
 		param: json(),
+		marks: json(),
+		length: int(),
+		parent: int(),
 		text_content: text(),
 		content: json(),
-		content_length: int(),
-		parent: int(),
 	},
 	(t) => [
 		primaryKey({ columns: [t.doc, t.id] }),
@@ -90,8 +100,8 @@ export const block = sqliteTable(
 	],
 );
 
-export const mark = sqliteTable(
-	"mark",
+export const annotation = sqliteTable(
+	"annotation",
 	{
 		id: int().primaryKey(),
 		tags: textList(),

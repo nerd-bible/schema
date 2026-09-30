@@ -1,7 +1,7 @@
 import { Plot, Leaf, Elt } from "wordgard/doc";
 import { Correction } from "wordgard/state";
 import { Decoration, Widget, Wordgard } from "wordgard/editor";
-import { Heading } from "./common";
+import { Heading } from "./common.ts";
 
 function getChapterNumber(heading: Plot | null) {
 	if (heading?.tag.is(Heading) && heading.tag.param == 2) {

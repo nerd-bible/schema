@@ -1,29 +1,123 @@
+// db
 import { Database } from "@tursodatabase/database";
-
 import { drizzle } from "drizzle-orm/tursodatabase/database";
-import { doc } from "./schema.ts";
+import { plot, doc } from "./schema.ts";
 import { readFileSync } from "node:fs";
+import type { InferInsertModel } from "drizzle-orm";
+// wordgard
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import book from "../wordgard/book.ts";
+import { GardState } from "wordgard/state";
+import { Leaf, Plot } from "wordgard/doc";
+import { VerseNum } from "../wordgard/verse.ts";
 
-const client = new Database(":memory:", {
-	experimental: ["custom_types"],
+async function initSchema() {
+	const client = new Database("test.db", {
+		experimental: ["custom_types", "index_method"],
+	});
+	await client.connect();
+	const schema = readFileSync("./migrations/turso/1.sql", "utf8");
+	await client.exec(schema);
+
+	return drizzle({ client });
+}
+
+// I prefer HTML for test documents storage since it's easier to acquire and
+// author than Wordgard JSON.
+GlobalRegistrator.register({
+	url: "http://localhost:3000",
+	width: 1920,
+	height: 1080,
 });
-await client.connect();
-const db = drizzle({ client });
 
-const schema = readFileSync("./migrations/turso/1.sql", "utf8");
-console.log(schema);
-console.log(await client.exec(schema));
+const wg = GardState.create({
+	doc: readFileSync("testdata/gen-bsb.html", "utf8"),
+	config: [book],
+});
 
-console.log(await client.all("select * from sqlite_master where type='table'"));
+const db = await initSchema();
+const docId = (
+	await db.insert(doc).values([{ lang: "eng", book: "gen", title: "BSB" }])
+).lastInsertRowid;
 
-// const prep = await db.insert(doc).values([{ lang: "eng", book: "gen" }]);
-// console.log(prep);
-// console.log(await db.select().from(doc));
+db.select().from(doc).get;
 
-// const db = await connect(':memory:', {
-// 	experimental: ["custom_types"],
-// });
-// await db.exec('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT[]) STRICT');
-// await db.exec("INSERT INTO users (name) VALUES (ARRAY['Alice', 'Allie'])");
-// const users = await (await db.prepare('SELECT * FROM users')).raw(false).all()
-// console.log(users); // { id: 1, name: '{Alice,Allie}' }
+// make an initial commit
+// const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+
+// row per-plot
+type Row = InferInsertModel<typeof plot>;
+const rows: Row[] = [];
+
+type Marks = { [name: string]: any };
+
+type Content = ({ v: string } | { t: number }) & { marks?: Marks };
+
+function textContent(node: Plot): string {
+	let res = "";
+	node.iterate((node) => {
+		if (node.tag.is(VerseNum.type)) return false;
+		if (node.isText) res += node.param as string;
+	});
+	return res;
+}
+
+function addMarks<T extends { marks?: Marks }>(node: Leaf | Plot, c: T): T {
+	if (node.marks.length) {
+		c.marks = {};
+		for (let { name, value } of node.marks) c.marks![name] = value;
+	}
+	return c;
+}
+
+function makeContent(node: Plot): Content[] {
+	let res: ReturnType<typeof makeContent> = [];
+
+	node.iterate((c) => {
+		if (c.tag.is(VerseNum.type)) {
+			const text = (c as Plot).textContent();
+			res.push(addMarks(c, { v: text } as Content));
+			return false;
+		} else if (c.isText) {
+			res.push(addMarks(c, { t: c.length } as Content));
+		}
+	});
+
+	return res;
+}
+
+function makeRow(node: Leaf | Plot, parent?: number, extra?: any): Row {
+	return addMarks(node, {
+		id: rows.length + 1,
+		doc: docId,
+		type: node.tag.name,
+		param: node.tag.param,
+		length: node.length,
+		parent,
+		...extra,
+	});
+}
+
+function pushRows(node: Leaf | Plot, parent?: number) {
+	if (node instanceof Plot) {
+		if (node.inlineContent) {
+			// base case
+			rows.push(
+				makeRow(node, parent, {
+					text_content: textContent(node),
+					content: makeContent(node),
+				}),
+			);
+		} else {
+			// recurse
+			rows.push(makeRow(node, parent));
+			const parentId = rows.length;
+			for (const c of node.content) pushRows(c, parentId);
+		}
+	}
+	return false;
+}
+
+wg.doc.iterate((node) => pushRows(node));
+await db.insert(plot).values(rows);
+await db.$client.close();

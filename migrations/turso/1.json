@@ -1,17 +1,17 @@
 {
   "dialect": "sqlite",
-  "id": "a8e2b020-8797-4fe0-a781-385eefcb1570",
+  "id": "391fedf3-7557-4bd2-bd70-267e5738ba0e",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
   "version": "7",
   "ddl": [
     {
-      "name": "author",
+      "name": "annotation",
       "entityType": "tables"
     },
     {
-      "name": "block",
+      "name": "author",
       "entityType": "tables"
     },
     {
@@ -31,12 +31,82 @@
       "entityType": "tables"
     },
     {
-      "name": "mark",
+      "name": "plot",
       "entityType": "tables"
     },
     {
       "name": "xref",
       "entityType": "tables"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "annotation"
+    },
+    {
+      "type": "text[]",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "tags",
+      "entityType": "columns",
+      "table": "annotation"
+    },
+    {
+      "type": "jsonb",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "param",
+      "entityType": "columns",
+      "table": "annotation"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "doc",
+      "entityType": "columns",
+      "table": "annotation"
+    },
+    {
+      "type": "blob",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "version",
+      "entityType": "columns",
+      "table": "annotation"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "start_pos",
+      "entityType": "columns",
+      "table": "annotation"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "end_pos",
+      "entityType": "columns",
+      "table": "annotation"
     },
     {
       "type": "integer",
@@ -67,86 +137,6 @@
       "name": "urls",
       "entityType": "columns",
       "table": "author"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "doc",
-      "entityType": "columns",
-      "table": "block"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "block"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "type",
-      "entityType": "columns",
-      "table": "block"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "param",
-      "entityType": "columns",
-      "table": "block"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "text_content",
-      "entityType": "columns",
-      "table": "block"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "content",
-      "entityType": "columns",
-      "table": "block"
-    },
-    {
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "content_length",
-      "entityType": "columns",
-      "table": "block"
-    },
-    {
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "parent",
-      "entityType": "columns",
-      "table": "block"
     },
     {
       "type": "blob",
@@ -202,7 +192,7 @@
       "type": "integer",
       "notNull": false,
       "autoincrement": false,
-      "default": null,
+      "default": "((unixepoch() << 16) + (abs(random()) % (1 << 16)))",
       "generated": null,
       "name": "id",
       "entityType": "columns",
@@ -280,53 +270,13 @@
     },
     {
       "type": "integer",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "mark"
-    },
-    {
-      "type": "text[]",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "tags",
-      "entityType": "columns",
-      "table": "mark"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "param",
-      "entityType": "columns",
-      "table": "mark"
-    },
-    {
-      "type": "integer",
-      "notNull": false,
+      "notNull": true,
       "autoincrement": false,
       "default": null,
       "generated": null,
       "name": "doc",
       "entityType": "columns",
-      "table": "mark"
-    },
-    {
-      "type": "blob",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "version",
-      "entityType": "columns",
-      "table": "mark"
+      "table": "plot"
     },
     {
       "type": "integer",
@@ -334,9 +284,39 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "start_pos",
+      "name": "id",
       "entityType": "columns",
-      "table": "mark"
+      "table": "plot"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "type",
+      "entityType": "columns",
+      "table": "plot"
+    },
+    {
+      "type": "jsonb",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "param",
+      "entityType": "columns",
+      "table": "plot"
+    },
+    {
+      "type": "jsonb",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "marks",
+      "entityType": "columns",
+      "table": "plot"
     },
     {
       "type": "integer",
@@ -344,9 +324,39 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "end_pos",
+      "name": "length",
       "entityType": "columns",
-      "table": "mark"
+      "table": "plot"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "parent",
+      "entityType": "columns",
+      "table": "plot"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "text_content",
+      "entityType": "columns",
+      "table": "plot"
+    },
+    {
+      "type": "jsonb",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "content",
+      "entityType": "columns",
+      "table": "plot"
     },
     {
       "type": "integer",
@@ -450,25 +460,10 @@
     },
     {
       "columns": [
-        "doc"
-      ],
-      "tableTo": "doc",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
-      "nameExplicit": false,
-      "name": "fk_block_doc_doc_id_fk",
-      "entityType": "fks",
-      "table": "block"
-    },
-    {
-      "columns": [
         "doc",
-        "parent"
+        "version"
       ],
-      "tableTo": "block",
+      "tableTo": "change_set",
       "columnsTo": [
         "doc",
         "id"
@@ -476,9 +471,9 @@
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
-      "name": "fk_block_doc_parent_block_doc_id_fk",
+      "name": "fk_annotation_doc_version_change_set_doc_id_fk",
       "entityType": "fks",
-      "table": "block"
+      "table": "annotation"
     },
     {
       "columns": [
@@ -527,10 +522,25 @@
     },
     {
       "columns": [
-        "doc",
-        "version"
+        "doc"
       ],
-      "tableTo": "change_set",
+      "tableTo": "doc",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_plot_doc_doc_id_fk",
+      "entityType": "fks",
+      "table": "plot"
+    },
+    {
+      "columns": [
+        "doc",
+        "parent"
+      ],
+      "tableTo": "plot",
       "columnsTo": [
         "doc",
         "id"
@@ -538,19 +548,9 @@
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
-      "name": "fk_mark_doc_version_change_set_doc_id_fk",
+      "name": "fk_plot_doc_parent_plot_doc_id_fk",
       "entityType": "fks",
-      "table": "mark"
-    },
-    {
-      "columns": [
-        "doc",
-        "id"
-      ],
-      "nameExplicit": false,
-      "name": "block_pk",
-      "entityType": "pks",
-      "table": "block"
+      "table": "plot"
     },
     {
       "columns": [
@@ -561,6 +561,25 @@
       "name": "doc_credit_pk",
       "entityType": "pks",
       "table": "doc_credit"
+    },
+    {
+      "columns": [
+        "doc",
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "plot_pk",
+      "entityType": "pks",
+      "table": "plot"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "annotation_pk",
+      "table": "annotation",
+      "entityType": "pks"
     },
     {
       "columns": [
@@ -596,15 +615,6 @@
       "nameExplicit": false,
       "name": "foo_pk",
       "table": "foo",
-      "entityType": "pks"
-    },
-    {
-      "columns": [
-        "id"
-      ],
-      "nameExplicit": false,
-      "name": "mark_pk",
-      "table": "mark",
       "entityType": "pks"
     },
     {

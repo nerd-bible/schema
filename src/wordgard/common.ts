@@ -12,7 +12,7 @@ import { InputRule, KeyBinding } from "wordgard/editor";
 import { GardState } from "wordgard/state";
 import { PhraseSet } from "wordgard/phrases";
 
-export const LineBreak = Leaf.define("LineBreak", {
+export const LineBreak = Leaf.define("br", {
 	inline: true,
 	role: Node.Role.LineBreak,
 	toText: () => "\n",
@@ -23,7 +23,7 @@ export function lineBreak(): GardState.Extension {
 	return GardState.schemaElement.of(LineBreak);
 }
 
-export const Paragraph = Plot.define("Paragraph", {
+export const Paragraph = Plot.define("p", {
 	inlineContent: true,
 	group: Node.Group.Content,
 	defaultBlock: true,
@@ -48,7 +48,7 @@ export function paragraph() {
 	];
 }
 
-export const Div = Plot.Type.define("Div", {
+export const Div = Plot.Type.define("div", {
 	defaultParam: "",
 	blockContent: Node.Group.Content,
 	group: Node.Group.Block,
@@ -69,7 +69,7 @@ export function div() {
 //   inlineContent: true
 // })
 
-const Blockquote = Plot.define("Blockquote", {
+const Blockquote = Plot.define("bq", {
 	blockContent: Node.Group.Content,
 	group: Node.Group.Content,
 	shape: { element: "blockquote" },
@@ -109,7 +109,7 @@ export function blockquote() {
 	];
 }
 
-export const Heading = Plot.Type.define("Heading", {
+export const Heading = Plot.Type.define("h", {
 	defaultParam: 3,
 	validate: (value) => {
 		if (
