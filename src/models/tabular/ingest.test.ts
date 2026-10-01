@@ -39,27 +39,30 @@ const doc: InferInsertModel<typeof schema.doc> = {
 	lang: "eng",
 	book: "gen",
 	title: "Genesis",
-	version: null, // will fill in later
 };
-
 const plots = await toCanonical(wg.doc, doc.id);
 
-const cs: Omit<InferInsertModel<typeof schema.changeSet>, "id"> = {
+console.time("hash");
+const hasher = new Hasher();
+hasher.wgNode(wg.doc);
+const cs: InferInsertModel<typeof schema.changeSet> = {
+	id: new Uint8Array(),
 	author: "BSB",
 	doc: doc.id,
 	message: "Initial commit",
 	timestamp: new Date(),
 };
-const hasher = new Hasher("SHA-256");
-await hasher.any(plots);
-await hasher.any(cs);
-doc.version = new Uint8Array(hasher.hash);
+hasher.any(cs);
+cs.id = hasher.finish();
+doc.version = cs.id;
+console.timeEnd("hash");
+
 console.log({ ...doc, version: doc.version.toHex() });
 
 console.time("transact");
 await db.transaction(async (tx) => {
 	await tx.insert(schema.doc).values(doc);
 	await tx.insert(schema.plot).values(plots);
-	await tx.insert(schema.changeSet).values({ id: doc.version!, ...cs });
+	await tx.insert(schema.changeSet).values(cs);
 });
 console.timeEnd("transact");

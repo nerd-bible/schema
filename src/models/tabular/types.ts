@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import { customType } from "drizzle-orm/sqlite-core";
 
 // PRIMITIVES
-// only good for small blobs
 export const blob32 = customType<{
 	data: Uint8Array;
 	driverData: Buffer | Uint8Array;

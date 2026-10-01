@@ -30,6 +30,7 @@
 		"drizzle-orm": "^1.0.0-rc.4",
 		"fast-myers-diff": "^3.2.0",
 		"fractional-indexing": "^4.0.0",
+		"jssha": "^3.3.2",
 		"wordgard": "npm:@nerd-bible/wordgard@^0.5.3-beta4"
 	},
 	"devDependencies": {

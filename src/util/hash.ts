@@ -1,70 +1,51 @@
-const encoder = new TextEncoder();
+import type { Leaf, Plot } from "wordgard/doc";
+// Sadly this is over 100x faster than crypto.digest shuffling.
+// The bundle is half the size of hash-wasm which is only slightly faster.
+import Sha256 from "jssha/dist/sha256";
 
 export class Hasher {
-	algo: string;
-	hash = new ArrayBuffer();
+	hash = new Sha256("SHA-256", "UINT8ARRAY");
 
-	constructor(algo: string) {
-		this.algo = algo;
+	buffer(b: ArrayBuffer) {
+		this.hash.update(b);
 	}
 
-	reset() {
-		this.hash = new ArrayBuffer();
-	}
-
-	bigint64() {
-		return new BigInt64Array(this.hash.slice(0, 8))[0];
-	}
-
-	bigint63() {
-		return this.bigint64() & -2n;
-	}
-
-	async buffer(b: ArrayBuffer) {
-		const digest = await crypto.subtle.digest(this.algo, b);
-		const next = new Uint8Array(this.hash.byteLength + digest.byteLength);
-		next.set(new Uint8Array(this.hash));
-		next.set(new Uint8Array(digest), this.hash.byteLength);
-		this.hash = await crypto.subtle.digest(this.algo, next);
-	}
-
-	async string(s: string) {
+	string(s: string) {
 		const normalized = s.normalize("NFKC");
-		const encoded = encoder.encode(normalized);
-		return this.buffer(encoded.buffer);
+		this.hash.update(normalized);
 	}
 
-	async number(n: number) {
+	number(n: number) {
 		const encoded = new Float64Array(1);
 		encoded[0] = n;
 		return this.buffer(encoded.buffer);
 	}
 
-	async boolean(b: boolean) {
+	boolean(b: boolean) {
 		return this.number(b ? 1 : 0);
 	}
 
-	async undefined() {
+	undefined() {
 		return this.number(-1);
 	}
 
-	async bigint(n: bigint) {
+	bigint(n: bigint) {
 		return this.string(n.toString(36));
 	}
 
-	async object(o: object) {
+	object(o: object) {
 		if (o === null) return this.number(-2);
 
 		const keys = Object.keys(o).sort();
 		for (const k of keys) {
-			await this.string(k);
-			await this.any(o[k as keyof typeof o]);
+			this.string(k);
+			this.any(o[k as keyof typeof o]);
 		}
 	}
 
-	async any(a: any) {
+	any(a: any) {
 		if (Array.isArray(a)) {
-			for (const e of a) await this.any(e);
+			for (const e of a) this.any(e);
 			return;
 		}
 
@@ -88,5 +69,24 @@ export class Hasher {
 			default:
 				throw Error("cannot hash " + a);
 		}
+	}
+
+	// slower than `.string(JSON.stringify(doc.toJSON()))`
+	wgNode(node: Plot | Leaf) {
+		this.string(node.tag.name);
+		this.any(node.tag.param);
+		for (const m of node.marks) {
+			this.string(m.name);
+			this.any(m.value);
+		}
+		if (node.isPlot) {
+			for (const c of node.content) {
+				this.wgNode(c);
+			}
+		}
+	}
+
+	finish(): Uint8Array {
+		return this.hash.getHash("UINT8ARRAY");
 	}
 }
