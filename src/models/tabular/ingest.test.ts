@@ -1,17 +1,14 @@
-// db
 import { Database } from "@tursodatabase/database";
 import { drizzle } from "drizzle-orm/tursodatabase/database";
-import { plot, doc, changeSet } from "./schema.ts";
+import * as schema from "./schema.ts";
 import { readFileSync } from "node:fs";
-import type { InferInsertModel } from "drizzle-orm";
-// wordgard
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import book from "../wordgard/book.ts";
 import { GardState } from "wordgard/state";
-import { Leaf, Plot } from "wordgard/doc";
-import { VerseNum } from "../wordgard/verse.ts";
-import { Hasher } from "../../util/hash.ts";
+import { toCanonical } from "./convert.ts";
+import type { InferInsertModel } from "drizzle-orm";
 import { tsid64 } from "../../util/rand.ts";
+import { Hasher } from "../../util/hash.ts";
 
 async function initSchema() {
 	const client = new Database("test.db", {
@@ -24,6 +21,8 @@ async function initSchema() {
 	return drizzle({ client });
 }
 
+const db = await initSchema();
+
 // I prefer HTML for test documents storage since it's easier to acquire and
 // author than Wordgard JSON.
 GlobalRegistrator.register({
@@ -31,108 +30,37 @@ GlobalRegistrator.register({
 	width: 1920,
 	height: 1080,
 });
-
 const wg = GardState.create({
 	doc: readFileSync("testdata/gen-bsb.html", "utf8"),
 	config: [book],
 });
+const doc: InferInsertModel<typeof schema.doc> = {
+	id: tsid64(),
+	lang: "eng",
+	book: "gen",
+	title: "Genesis",
+	version: null, // will fill in later
+};
 
-const db = await initSchema();
-const docId = tsid64();
+const plots = await toCanonical(wg.doc, doc.id);
 
-// make an initial commit
-
-// row per-plot
-type Row = InferInsertModel<typeof plot>;
-const rows: Row[] = [];
-
-type Marks = { [name: string]: any };
-
-type Content = ({ v: string } | { t: number }) & { marks?: Marks };
-
-function textContent(node: Plot): string {
-	let res = "";
-	node.iterate((node) => {
-		if (node.tag.is(VerseNum.type)) return false;
-		if (node.isText) res += node.param as string;
-	});
-	return res;
-}
-
-function addMarks<T extends { marks?: Marks }>(node: Leaf | Plot, c: T): T {
-	if (node.marks.length) {
-		c.marks = {};
-		for (let { name, value } of node.marks) c.marks![name] = value;
-	}
-	return c;
-}
-
-function makeContent(node: Plot): Content[] {
-	let res: ReturnType<typeof makeContent> = [];
-
-	node.iterate((c) => {
-		if (c.tag.is(VerseNum.type)) {
-			const text = (c as Plot).textContent();
-			res.push(addMarks(c, { v: text } as Content));
-			return false;
-		} else if (c.isText) {
-			res.push(addMarks(c, { t: c.length } as Content));
-		}
-	});
-
-	return res;
-}
-
-function makeRow(node: Leaf | Plot, parent?: number, extra?: any): Row {
-	return addMarks(node, {
-		id: rows.length + 1,
-		doc: docId,
-		type: node.tag.name,
-		param: node.tag.param,
-		length: node.length,
-		parent,
-		...extra,
-	});
-}
-
-function pushRows(node: Leaf | Plot, parent?: number) {
-	if (node instanceof Plot) {
-		if (node.inlineContent) {
-			// base case
-			rows.push(
-				makeRow(node, parent, {
-					text_content: textContent(node),
-					content: makeContent(node),
-				}),
-			);
-		} else {
-			// recurse
-			rows.push(makeRow(node, parent));
-			const parentId = rows.length;
-			for (const c of node.content) pushRows(c, parentId);
-		}
-	}
-	return false;
-}
-
-wg.doc.iterate((node) => pushRows(node));
-
-const cs: Omit<InferInsertModel<typeof changeSet>, "id"> = {
+const cs: Omit<InferInsertModel<typeof schema.changeSet>, "id"> = {
 	author: "BSB",
-	doc: docId,
+	doc: doc.id,
 	message: "Initial commit",
 	timestamp: new Date(),
+	parents: [],
 };
 const hasher = new Hasher("SHA-256");
-await hasher.any(rows);
+await hasher.any(plots);
 await hasher.any(cs);
-const version = new Uint8Array(hasher.hash);
-console.log(version.toHex());
+doc.version = new Uint8Array(hasher.hash);
+console.log({ ...doc, version: doc.version.toHex() });
 
-await db.transaction(async tx => {
-	await tx.insert(doc).values({ id: docId, version: version, lang: "eng", book: "gen", title: "BSB" })
-	await tx.insert(plot).values(rows);
-	await tx.insert(changeSet).values({ id: version, ...cs });
+console.time("transact");
+await db.transaction(async (tx) => {
+	await tx.insert(schema.doc).values(doc);
+	await tx.insert(schema.plot).values(plots);
+	await tx.insert(schema.changeSet).values({ id: doc.version!, ...cs });
 });
-
-await db.$client.close();
+console.timeEnd("transact");

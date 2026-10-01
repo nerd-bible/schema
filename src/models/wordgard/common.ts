@@ -122,7 +122,10 @@ export const Heading = Plot.Type.define("h", {
 	},
 	inlineContent: Leaf.Text,
 	group: Node.Group.Block,
-	shape: { structure: (level) => Elt.mk("h" + level, [0]), atom: false },
+	shape: {
+		structure: (level) => Elt.mk("h" + level, [0]), atom: false,
+	foo: "bar",
+	},
 	defining: true,
 	parseRules: [
 		{ selector: "h1", param: 1 },
