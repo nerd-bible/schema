@@ -43,18 +43,14 @@ CREATE TABLE `doc_credit` (
 	CONSTRAINT `fk_doc_credit_author_author_id_fk` FOREIGN KEY (`author`) REFERENCES `author`(`id`)
 ) STRICT;
 
-CREATE TABLE `foo` (
-	`id` integer PRIMARY KEY
-) STRICT;
-
 CREATE TABLE `plot` (
 	`doc` integer NOT NULL,
-	`id` integer NOT NULL,
+	`id` text NOT NULL,
 	`type` text NOT NULL,
 	`param` jsonb,
 	`marks` jsonb,
-	`length` integer,
-	`parent` integer,
+	`length` integer NOT NULL,
+	`parent` text,
 	`text_content` text,
 	`content` jsonb,
 	CONSTRAINT `plot_pk` PRIMARY KEY(`doc`, `id`),

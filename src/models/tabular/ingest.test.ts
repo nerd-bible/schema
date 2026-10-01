@@ -49,13 +49,13 @@ const cs: Omit<InferInsertModel<typeof schema.changeSet>, "id"> = {
 	doc: doc.id,
 	message: "Initial commit",
 	timestamp: new Date(),
-	parents: [],
 };
 const hasher = new Hasher("SHA-256");
 await hasher.any(plots);
 await hasher.any(cs);
 doc.version = new Uint8Array(hasher.hash);
 console.log({ ...doc, version: doc.version.toHex() });
+// cs.parents = [doc.version]
 
 console.time("transact");
 await db.transaction(async (tx) => {
@@ -64,3 +64,6 @@ await db.transaction(async (tx) => {
 	await tx.insert(schema.changeSet).values({ id: doc.version!, ...cs });
 });
 console.timeEnd("transact");
+
+console.log( await db.select().from(schema.changeSet))
+

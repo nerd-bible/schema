@@ -3,25 +3,68 @@ import * as schema from "./schema.ts";
 import type { InferInsertModel } from "drizzle-orm";
 import { Leaf, Plot } from "wordgard/doc";
 import { VerseNum } from "../wordgard/verse.ts";
-import type { GardState } from "wordgard/state";
+import { generateKeyBetween } from "fractional-indexing";
 
-type Node = Leaf | Plot;
 type Marks = { [name: string]: any };
 type Content = ({ v: string } | { t: number }) & { marks?: Marks };
 
 class BlockPlotSerializer {
-	ctx: GardState;
+	res: InferInsertModel<typeof schema.plot>[] = [];
+	docId: bigint;
 
-	constructor(ctx: GardState) {
-		this.ctx = ctx;
+	constructor(docId: bigint) {
+		this.docId = docId;
 	}
 
-	serialize(n: Node) {
-		const maybeFn = (n.type.spec as any).encoders?.blockPlot;
-		if (maybeFn) return maybeFn(n);
+	marks(m: wg.Mark.Set) {
+		if (m.length) {
+			let res: Marks = {};
+			for (let { name, value } of m) res[name] = value;
+			return res;
+		}
 	}
 
-	deserialize(n: ReturnType<Serializer["serialize"]>): Node {
+	leaf(node: Leaf) {
+		if (node.isText) {
+			const last = this.res.at(-1)!;
+			last.text_content ??= "";
+			last.text_content += node.param;
+			last.content ??= [];
+			last.content.push({ t: (node.param as string).length });
+		}
+	}
+
+	plot(node: Plot, parent?: string) {
+		const last = this.res.at(-1);
+		if (node.inlineContent && node.tag.is(VerseNum.type)) {
+			last!.content ??= [];
+			last!.content.push({ v: node.textContent() });
+			return;
+		}
+
+		const row = {
+			id: generateKeyBetween(last?.id, null),
+			doc: this.docId,
+			type: node.tag.name,
+			param: node.tag.param,
+			length: node.length,
+			parent,
+			marks: this.marks(node.marks),
+		};
+		this.res.push(row);
+		this.descend(node, row.id);
+	}
+
+	descend(node: Plot, parent?: string) {
+		for (const c of node.content) {
+			if (c.isPlot) this.plot(c, parent);
+			else this.leaf(c);
+		}
+	}
+
+	doc(d: Plot.Doc) {
+		this.descend(d);
+		return this.res;
 	}
 }
 
@@ -29,78 +72,7 @@ export async function toCanonical(
 	doc: wg.Plot.Doc,
 	docId: InferInsertModel<typeof schema.plot>["doc"],
 ) {
-	const res: InferInsertModel<typeof schema.plot>[] = [];
-
-	function textContent(node: Plot): string {
-		let res = "";
-		node.iterate((node) => {
-			if (node.tag.is(VerseNum.type)) return false;
-			if (node.isText) res += node.param as string;
-		});
-		return res;
-	}
-
-	function addMarks<T extends { marks?: Marks }>(node: Leaf | Plot, c: T): T {
-		if (node.marks.length) {
-			c.marks = {};
-			for (let { name, value } of node.marks) c.marks![name] = value;
-		}
-		return c;
-	}
-
-	function makeContent(node: Plot): Content[] {
-		let res: ReturnType<typeof makeContent> = [];
-
-		node.iterate((c) => {
-			if (c.tag.is(VerseNum.type)) {
-				const text = (c as Plot).textContent();
-				res.push(addMarks(c, { v: text } as Content));
-				return false;
-			} else if (c.isText) {
-				res.push(addMarks(c, { t: c.length } as Content));
-			}
-		});
-
-		return res;
-	}
-
-	function makeRow(
-		node: Leaf | Plot,
-		parent?: number,
-		extra?: any,
-	): InferInsertModel<typeof schema.plot> {
-		return addMarks(node, {
-			id: res.length + 1,
-			doc: docId,
-			type: node.tag.name,
-			param: node.tag.param,
-			length: node.length,
-			parent,
-			...extra,
-		});
-	}
-
-	function pushRows(node: Leaf | Plot, parent?: number) {
-		if (node instanceof Plot) {
-			if (node.inlineContent) {
-				// base case
-				res.push(
-					makeRow(node, parent, {
-						text_content: textContent(node),
-						content: makeContent(node),
-					}),
-				);
-			} else {
-				// recurse
-				res.push(makeRow(node, parent));
-				const parentId = res.length;
-				for (const c of node.content) pushRows(c, parentId);
-			}
-		}
-		return false;
-	}
-
-	doc.iterate((node) => pushRows(node));
-
-	return res;
+	const serializer = new BlockPlotSerializer(docId);
+	serializer.doc(doc);
+	return serializer.res;
 }

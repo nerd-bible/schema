@@ -1,6 +1,6 @@
 {
   "dialect": "sqlite",
-  "id": "295bc4d1-feed-44ed-8ef3-9f112c4ca27e",
+  "id": "33f2c274-cd89-44f6-a4a6-1eeef73ad9fd",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -24,10 +24,6 @@
     },
     {
       "name": "doc_credit",
-      "entityType": "tables"
-    },
-    {
-      "name": "foo",
       "entityType": "tables"
     },
     {
@@ -290,16 +286,6 @@
     },
     {
       "type": "integer",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "foo"
-    },
-    {
-      "type": "integer",
       "notNull": true,
       "autoincrement": false,
       "default": null,
@@ -309,7 +295,7 @@
       "table": "plot"
     },
     {
-      "type": "integer",
+      "type": "text",
       "notNull": true,
       "autoincrement": false,
       "default": null,
@@ -350,7 +336,7 @@
     },
     {
       "type": "integer",
-      "notNull": false,
+      "notNull": true,
       "autoincrement": false,
       "default": null,
       "generated": null,
@@ -359,7 +345,7 @@
       "table": "plot"
     },
     {
-      "type": "integer",
+      "type": "text",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -636,15 +622,6 @@
       "nameExplicit": false,
       "name": "doc_pk",
       "table": "doc",
-      "entityType": "pks"
-    },
-    {
-      "columns": [
-        "id"
-      ],
-      "nameExplicit": false,
-      "name": "foo_pk",
-      "table": "foo",
       "entityType": "pks"
     },
     {

@@ -19,7 +19,7 @@
 	],
 	"scripts": {
 		"build": "tsc -p ./tsconfig.build.json",
-		"migrate": "node ./src/generateMigration.ts",
+		"generate": "node ./src/generateMigration.ts",
 		"test": "node --test",
 		"fmt": "prettier --check --ignore-path .gitignore .",
 		"fmt-fix": "npm run fmt -- --write",
