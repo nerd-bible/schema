@@ -5,12 +5,12 @@ import {
 	primaryKey,
 	foreignKey,
 } from "drizzle-orm/sqlite-core";
-import { hexBlobList, int64, hexBlob, json, textList, timestamp } from "./types.ts";
+import { blob32List, int64, blob, json, textList, timestamp } from "./types.ts";
 
 export const doc = sqliteTable("doc", {
 	id: int64().primaryKey(),
 		// .default(sql`((unixepoch() << 16) + (abs(random()) % (1 << 16)))`),
-	version: hexBlob(),
+	version: blob(),
 	lang: text().notNull(),
 	book: text(),
 	title: text(),
@@ -37,13 +37,13 @@ export const docCredit = sqliteTable(
 );
 
 export const changeSet = sqliteTable("change_set", {
-	id: hexBlob().primaryKey(), // sha256 of rest of fields
+	id: blob().primaryKey(), // sha256 of rest of fields
 	doc: int64().references(() => doc.id),
 	author: text(),
 	timestamp: timestamp(),
 	message: text(),
 	changes: text(),
-	parents: hexBlobList(),
+	parents: blob32List(),
 });
 
 export const plot = sqliteTable(
@@ -74,7 +74,7 @@ export const annotation = sqliteTable(
 		tags: textList(),
 		param: json(),
 		doc: int64(),
-		version: hexBlob(),
+		version: blob(),
 		start_pos: int().notNull(),
 		end_pos: int(),
 	},
@@ -90,11 +90,11 @@ export const xref = sqliteTable("xref", {
 	id: int().primaryKey(),
 	tags: textList(),
 	from_doc: int64().notNull(),
-	from_doc_version: hexBlob().notNull(),
+	from_doc_version: blob().notNull(),
 	from_doc_start_pos: int().notNull(),
 	from_doc_end_pos: int(),
 	to_doc: int64().notNull(),
-	to_doc_version: hexBlob().notNull(),
+	to_doc_version: blob().notNull(),
 	to_doc_start_pos: int().notNull(),
 	to_doc_end_pos: int(),
 });

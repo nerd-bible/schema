@@ -1,6 +1,6 @@
 {
   "dialect": "sqlite",
-  "id": "33f2c274-cd89-44f6-a4a6-1eeef73ad9fd",
+  "id": "164ba39f-90ff-46a0-912c-e8241b2c0c21",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -45,7 +45,7 @@
       "table": "annotation"
     },
     {
-      "type": "text[]",
+      "type": "jsonb",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -125,7 +125,7 @@
       "table": "author"
     },
     {
-      "type": "text[]",
+      "type": "jsonb",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -195,7 +195,7 @@
       "table": "change_set"
     },
     {
-      "type": "blob[]",
+      "type": "blob",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -275,7 +275,7 @@
       "table": "doc_credit"
     },
     {
-      "type": "text[]",
+      "type": "jsonb",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -385,7 +385,7 @@
       "table": "xref"
     },
     {
-      "type": "text[]",
+      "type": "jsonb",
       "notNull": false,
       "autoincrement": false,
       "default": null,

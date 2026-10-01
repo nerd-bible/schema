@@ -12,13 +12,13 @@ import { Hasher } from "../../util/hash.ts";
 
 async function initSchema() {
 	const client = new Database("test.db", {
-		experimental: ["custom_types", "index_method"],
+		experimental: ["custom_types", "index_method", "vacuum"],
 	});
 	await client.connect();
 	const schema = readFileSync("./migrations/turso/1.sql", "utf8");
 	await client.exec(schema);
 
-	return drizzle({ client });
+	return drizzle({ client, jit: true });
 }
 
 const db = await initSchema();
@@ -55,7 +55,6 @@ await hasher.any(plots);
 await hasher.any(cs);
 doc.version = new Uint8Array(hasher.hash);
 console.log({ ...doc, version: doc.version.toHex() });
-// cs.parents = [doc.version]
 
 console.time("transact");
 await db.transaction(async (tx) => {
@@ -64,6 +63,3 @@ await db.transaction(async (tx) => {
 	await tx.insert(schema.changeSet).values({ id: doc.version!, ...cs });
 });
 console.timeEnd("transact");
-
-console.log( await db.select().from(schema.changeSet))
-

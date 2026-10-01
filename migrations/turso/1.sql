@@ -1,6 +1,6 @@
 CREATE TABLE `annotation` (
 	`id` integer PRIMARY KEY,
-	`tags` text[],
+	`tags` jsonb,
 	`param` jsonb,
 	`doc` integer,
 	`version` blob,
@@ -12,7 +12,7 @@ CREATE TABLE `annotation` (
 CREATE TABLE `author` (
 	`id` integer PRIMARY KEY,
 	`name` text NOT NULL,
-	`urls` text[]
+	`urls` jsonb
 ) STRICT;
 
 CREATE TABLE `change_set` (
@@ -22,7 +22,7 @@ CREATE TABLE `change_set` (
 	`timestamp` timestamp,
 	`message` text,
 	`changes` text,
-	`parents` blob[],
+	`parents` blob,
 	CONSTRAINT `fk_change_set_doc_doc_id_fk` FOREIGN KEY (`doc`) REFERENCES `doc`(`id`)
 ) STRICT;
 
@@ -37,7 +37,7 @@ CREATE TABLE `doc` (
 CREATE TABLE `doc_credit` (
 	`doc` integer NOT NULL,
 	`author` integer NOT NULL,
-	`credits` text[],
+	`credits` jsonb,
 	CONSTRAINT `doc_credit_pk` PRIMARY KEY(`doc`, `author`),
 	CONSTRAINT `fk_doc_credit_doc_doc_id_fk` FOREIGN KEY (`doc`) REFERENCES `doc`(`id`),
 	CONSTRAINT `fk_doc_credit_author_author_id_fk` FOREIGN KEY (`author`) REFERENCES `author`(`id`)
@@ -60,7 +60,7 @@ CREATE TABLE `plot` (
 
 CREATE TABLE `xref` (
 	`id` integer PRIMARY KEY,
-	`tags` text[],
+	`tags` jsonb,
 	`from_doc` integer NOT NULL,
 	`from_doc_version` blob NOT NULL,
 	`from_doc_start_pos` integer NOT NULL,
