@@ -30,10 +30,12 @@ GlobalRegistrator.register({
 	width: 1920,
 	height: 1080,
 });
+console.time("parse");
 const wg = GardState.create({
 	doc: readFileSync("testdata/gen-bsb.html", "utf8"),
 	config: [book],
 });
+console.timeEnd("parse");
 const doc: InferInsertModel<typeof schema.doc> = {
 	id: tsid64(),
 	lang: "eng",

@@ -64,6 +64,8 @@ export const plot = sqliteTable(
 	(t) => [
 		primaryKey({ columns: [t.doc, t.id] }),
 		foreignKey({ columns: [t.doc, t.parent], foreignColumns: [t.doc, t.id] }),
+		// FTS index manually added in generateMigration since drizzle-orm doesn't
+		// support USING for sqlite
 	],
 );
 

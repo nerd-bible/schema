@@ -45,6 +45,8 @@ export const json = customType<{
 // - https://github.com/tursodatabase/turso/issues/9448
 // - https://github.com/tursodatabase/turso/issues/9449
 // - https://github.com/tursodatabase/turso/issues/9451
+// - https://github.com/tursodatabase/turso/issues/9469
+// - https://github.com/tursodatabase/turso/issues/9470
 export const textList = customType<{ data: string[]; driverData: string }>({
 	dataType: () => "jsonb",
 	toDriver: (value) => sql`${JSON.stringify(value)}`,

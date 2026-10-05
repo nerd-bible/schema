@@ -33,6 +33,11 @@ const migration = (await generateMigration(from, to)).map((sql) => {
 	if (sql.startsWith("CREATE TABLE")) return sql.replace(");", ") STRICT;");
 	return sql;
 });
+if (toId == 1)
+	migration.push(
+		"CREATE INDEX idx_plot_text ON plot USING fts (text_content);",
+		// "CREATE INDEX idx_plot_text_grams ON plot USING fts (text_content WITH tokenizer=ngram);",
+	);
 
 if (migration.length) {
 	writeFileSync(resolve(outdir, toId + ".json"), JSON.stringify(to, null, 2));

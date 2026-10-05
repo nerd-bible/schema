@@ -1,7 +1,7 @@
 CREATE TABLE `annotation` (
 	`id` integer PRIMARY KEY,
-	`tags` jsonb,
-	`param` jsonb,
+	`tags` json,
+	`param` json,
 	`doc` integer,
 	`version` blob,
 	`start_pos` integer NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE `annotation` (
 CREATE TABLE `author` (
 	`id` integer PRIMARY KEY,
 	`name` text NOT NULL,
-	`urls` jsonb
+	`urls` json
 ) STRICT;
 
 CREATE TABLE `change_set` (
@@ -37,7 +37,7 @@ CREATE TABLE `doc` (
 CREATE TABLE `doc_credit` (
 	`doc` integer NOT NULL,
 	`author` integer NOT NULL,
-	`credits` jsonb,
+	`credits` json,
 	CONSTRAINT `doc_credit_pk` PRIMARY KEY(`doc`, `author`),
 	CONSTRAINT `fk_doc_credit_doc_doc_id_fk` FOREIGN KEY (`doc`) REFERENCES `doc`(`id`),
 	CONSTRAINT `fk_doc_credit_author_author_id_fk` FOREIGN KEY (`author`) REFERENCES `author`(`id`)
@@ -47,12 +47,12 @@ CREATE TABLE `plot` (
 	`doc` integer NOT NULL,
 	`id` text NOT NULL,
 	`type` text NOT NULL,
-	`param` jsonb,
-	`marks` jsonb,
+	`param` json,
+	`marks` json,
 	`length` integer NOT NULL,
 	`parent` text,
 	`text_content` text,
-	`content` jsonb,
+	`content` json,
 	CONSTRAINT `plot_pk` PRIMARY KEY(`doc`, `id`),
 	CONSTRAINT `fk_plot_doc_doc_id_fk` FOREIGN KEY (`doc`) REFERENCES `doc`(`id`),
 	CONSTRAINT `fk_plot_doc_parent_plot_doc_id_fk` FOREIGN KEY (`doc`,`parent`) REFERENCES `plot`(`doc`,`id`)
@@ -60,7 +60,7 @@ CREATE TABLE `plot` (
 
 CREATE TABLE `xref` (
 	`id` integer PRIMARY KEY,
-	`tags` jsonb,
+	`tags` json,
 	`from_doc` integer NOT NULL,
 	`from_doc_version` blob NOT NULL,
 	`from_doc_start_pos` integer NOT NULL,
@@ -70,3 +70,5 @@ CREATE TABLE `xref` (
 	`to_doc_start_pos` integer NOT NULL,
 	`to_doc_end_pos` integer
 ) STRICT;
+
+CREATE INDEX idx_plot_text ON plot USING fts (text_content);

@@ -1,7 +1,7 @@
 {
 	"extends": "@nerd-bible/config/tsconfig.json",
 	"compilerOptions": {
-		"types": ["node", "vite/client"],
+		"types": ["node"],
 		"lib": ["esnext", "dom"]
 	}
 }

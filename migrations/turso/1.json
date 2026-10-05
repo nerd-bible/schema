@@ -1,6 +1,6 @@
 {
   "dialect": "sqlite",
-  "id": "164ba39f-90ff-46a0-912c-e8241b2c0c21",
+  "id": "15b80bea-bfbb-4b5b-9996-cd0688c751a6",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -45,7 +45,7 @@
       "table": "annotation"
     },
     {
-      "type": "jsonb",
+      "type": "json",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -55,7 +55,7 @@
       "table": "annotation"
     },
     {
-      "type": "jsonb",
+      "type": "json",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -125,7 +125,7 @@
       "table": "author"
     },
     {
-      "type": "jsonb",
+      "type": "json",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -275,7 +275,7 @@
       "table": "doc_credit"
     },
     {
-      "type": "jsonb",
+      "type": "json",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -315,7 +315,7 @@
       "table": "plot"
     },
     {
-      "type": "jsonb",
+      "type": "json",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -325,7 +325,7 @@
       "table": "plot"
     },
     {
-      "type": "jsonb",
+      "type": "json",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -365,7 +365,7 @@
       "table": "plot"
     },
     {
-      "type": "jsonb",
+      "type": "json",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -385,7 +385,7 @@
       "table": "xref"
     },
     {
-      "type": "jsonb",
+      "type": "json",
       "notNull": false,
       "autoincrement": false,
       "default": null,
