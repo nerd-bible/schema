@@ -1,0 +1,77 @@
+import type { Schema } from "wordgard/doc";
+import {
+	Blockquote,
+	Doc,
+	Heading,
+	LineBreak,
+	Paragraph,
+} from "./common.ts";
+import {
+	Alignment,
+	BackgroundColor,
+	BlockCell,
+	BulletList,
+	CaptionedFigure,
+	Cell,
+	Color,
+	ColSpan,
+	Direction,
+	Emphasis,
+	Figure,
+	HeaderCell,
+	HorizontalRule,
+	Image,
+	ImageAlt,
+	ImageSize,
+	Link,
+	ListItem,
+	OrderedList,
+	RowSpan,
+	Strikethrough,
+	Strong,
+	Subscript,
+	Superscript,
+	Table,
+	TableRow,
+	Underline,
+} from "wordgard/types";
+
+export const schema: Schema.Element[] = [
+	Doc,
+	// blocks
+	Heading,
+	Paragraph,
+	Blockquote,
+	// list
+	ListItem,
+	OrderedList,
+	BulletList,
+	HorizontalRule,
+	// image
+	Image,
+	Figure,
+	CaptionedFigure,
+	ImageAlt,
+	ImageSize,
+	// table
+	Cell,
+	HeaderCell,
+	TableRow,
+	Table,
+	ColSpan,
+	RowSpan,
+	// inline
+	LineBreak,
+	Link,
+	// marks
+	Alignment,
+	Direction,
+	Emphasis,
+	Strong,
+	Underline,
+	Strikethrough,
+	Superscript,
+	Subscript,
+	Color,
+	BackgroundColor,
+];
