@@ -1,16 +1,34 @@
-import { Plot, Node } from "wordgard/doc";
+import { Plot, Node, Leaf } from "wordgard/doc";
 import {
-	Paragraph,
 	LineBreak,
 	Blockquote,
-	Doc,
 	Heading as WgHeading,
+	Strong,
+	Emphasis,
 } from "wordgard/types";
 
-export { Paragraph, LineBreak, Blockquote, Doc };
+export { LineBreak, Blockquote, Strong, Emphasis };
+
+export const Doc = Plot.defineDoc({
+	blockContent: Node.Group.Content,
+	canBeEmpty: true,
+});
+
+export const Paragraph = Plot.Type.define<string>("Paragraph", {
+	defaultParam: "",
+	inlineContent: true,
+	group: Node.Group.Content,
+	defaultBlock: true,
+	shape: {
+		element: "p",
+		attributes: (claz) => ({ ...(claz ? { class: claz } : {}) }),
+	},
+	parseRules: [{ selector: "p", readElement: (ele) => ele.className }],
+});
 
 export const Heading = Plot.Type.define("Heading", {
 	...WgHeading.spec,
+	inlineContent: Leaf.Text,
 	defaultParam: 3,
 });
 

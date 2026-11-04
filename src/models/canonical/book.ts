@@ -4,22 +4,29 @@ import {
 	Heading,
 	LineBreak,
 	Paragraph,
+	Strong,
+	Emphasis,
 } from "./common.ts";
 import { Leaf, Mark, Plot, Schema, ValidationError } from "wordgard/doc";
 
-export {
-	Blockquote,
-	Doc,
-	Heading,
-	LineBreak,
-	Paragraph,
-};
+export { Blockquote, Doc, Heading, LineBreak, Paragraph, Strong, Emphasis };
 export { Leaf };
 
 export const VerseNum = Plot.define("VerseNum", {
 	inline: true,
 	inlineContent: Leaf.Text,
 	shape: { element: "sup" },
+});
+
+export const Whitespace = Leaf.Type.define("Whitespace", {
+	defaultParam: "",
+	inline: true,
+	selectable: true,
+	shape: {
+		element: "span",
+		attributes: (a) => ({ class: "whitespace " + a }),
+	},
+	parseRules: [{ selector: "span.whitespace" }],
 });
 
 function parseInt(s?: string | null) {
@@ -87,8 +94,11 @@ export const schema: Schema.Element[] = [
 	// inline
 	LineBreak,
 	VerseNum,
+	Whitespace,
 	// marks
 	Smoothed,
+	Strong, // for headings
+	Emphasis, // for headings
 	// corrections
 	// correctVerseNum,
 ];

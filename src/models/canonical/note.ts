@@ -9,7 +9,6 @@ import {
 import {
 	Alignment,
 	BackgroundColor,
-	BlockCell,
 	BulletList,
 	CaptionedFigure,
 	Cell,
