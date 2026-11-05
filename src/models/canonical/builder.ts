@@ -1,8 +1,9 @@
-import { GardSelection, GardState } from "wordgard/state";
+import { GardState } from "wordgard/state";
 import type { Meta } from "./meta.ts";
 import * as z from "zod";
 import type { SourceMap } from "./sourceMap";
-import { Leaf, Plot, type Node, type Token } from "wordgard/doc";
+import { Leaf, Mark, Plot, Node } from "wordgard/doc";
+import type { Token as WgToken } from "wordgard/doc";
 
 export type Doc = {
 	type: "doc";
@@ -17,22 +18,30 @@ export type SourceMap = {
 	map: z.infer<typeof SourceMap>;
 };
 
+// We could allow Plot.Tag if we created a Node for them, but be lazy for now.
+type Token = Exclude<WgToken, Plot.Tag>;
+
 export class Builder {
-	state: GardState;
 	meta: Meta;
 	xrefs: Record<string, Builder> = {};
 	xrefsMap: Record<string, z.infer<typeof SourceMap>> = {};
-	lastInsert?: Node | Plot.Tag;
+	// I originally used `GardState`, but each `.update` fully validates the
+	// entire document, which is slow.
+	// Instead we'll directly mutate a document (working around the `readonly`
+	// types) and validate it once at the end.
+	doc: Plot.Doc;
+	stack: Plot[] = [];
+	lastInsert: Node;
 
-	constructor(
-		config: GardState.Extension | GardState.Configuration,
-		meta: Meta,
-	) {
-		this.state = GardState.create({ config });
+	constructor(config: GardState.Extension, meta: Meta) {
+		const resolved = GardState.Configuration.create(config);
+		this.doc = this.lastInsert = resolved.schema!.doc([]);
 		this.meta = meta;
 	}
 
-	finish(): (Doc | SourceMap)[] {
+	finish(validate = true): (Doc | SourceMap)[] {
+		if (validate) this.doc.schema.validate(this.doc);
+
 		for (const a of Object.values(this.xrefs)) {
 			const annotates = (a.meta.xrefs ??= []);
 			annotates.push(this.meta.id);
@@ -43,7 +52,7 @@ export class Builder {
 			type: "doc",
 			schema: 1,
 			meta: this.meta,
-			doc: this.state.doc.toJSON(),
+			doc: this.doc.toJSON(),
 		};
 		for (const s in this.xrefs) {
 			const xref = this.xrefs[s];
@@ -68,28 +77,75 @@ export class Builder {
 		return res;
 	}
 
+	get parent() {
+		return this.stack.at(-1) ?? this.doc;
+	}
+
 	insert(...tokens: (Token | string)[]) {
-		let { from, to } = this.state.selection.replacementRange;
-		// Wordgard errors if there's no plot to close. We really just mean move
-		// onto the next block.
-		if (tokens[0] == Plot.End) {
-			const maxCursor = this.state.doc.length;
-			from = Math.min(maxCursor, from + 1);
-			to = Math.min(maxCursor, to + 1);
-			tokens = tokens.slice(1);
+		for (const t of tokens) {
+			if (t == Plot.End) {
+				this.stack.pop();
+				continue;
+			}
+
+			const parent = this.parent;
+			const insert = (typeof t == "string" ? Leaf.text(t) : t) as Node;
+
+			// workaround WordGard.Node.create(content = [])
+			if (parent.content.length == 0) (parent.content as Node[]) = [];
+
+			// optimize text concatenation
+			if (
+				this.lastInsert.isText &&
+				insert.isText &&
+				Mark.sameSet(this.lastInsert.marks, insert.marks)
+			) {
+				(this.lastInsert as any).param += insert.param;
+			} else {
+				(parent.content as Node[]).push(insert);
+				this.lastInsert = insert;
+			}
+
+			// update contentLength ourselves
+			for (const s of this.stack) s.contentLength += insert.length;
+			this.doc.contentLength += insert.length;
+
+			if (insert.isPlot) this.stack.push(insert);
 		}
-		const insert = (
-			tokens.filter((t) => t != Plot.End) as (Node | Plot.Tag)[]
-		).map((t) => (typeof t == "string" ? Leaf.text(t) : t));
-		const tr = this.state.update({
-			changes: { from, to, insert },
-			selection: (cx, changes) => GardSelection.near(cx, changes.mapPos(to, 1)),
-		});
-		this.state = tr.state;
-		this.lastInsert = insert.at(-1);
 	}
 
 	isEmpty() {
-		return this.state.doc.length <= 2;
+		return this.doc.length <= 2;
+	}
+
+	get cursor() {
+		return this.doc.length - this.stack.length;
+	}
+
+	get schema() {
+		return this.doc.schema;
+	}
+
+	isInsertValid(n: Node) {
+		return this.schema.canContain(this.parent.type, n.type);
+	}
+
+	toString(n: Node = this.doc, depth = 0) {
+		let res = "\t".repeat(depth);
+		if (!n.isText) res += n.type.name;
+		if (n.isPlot) {
+			for (const n2 of n.content) {
+				res += n.content.length > 1 ? "\n" : " ";
+				res += this.toString(n2, depth + 1);
+			}
+		} else {
+			if (!n.isText && !n.type.hasRole(Node.Role.LineBreak)) res += "\n";
+
+			if (n.param) res += JSON.stringify(n.param);
+			if (n.marks.length) {
+				res += `[${n.marks.map((m) => m.name).join(",")}]`;
+			}
+		}
+		return res;
 	}
 }
