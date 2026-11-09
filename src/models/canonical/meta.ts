@@ -1,4 +1,5 @@
-type Id = string; // uuidv4
+export type Id = string; // uuidv4
+
 export type Common = {
 	id: Id;
 	published: Date;

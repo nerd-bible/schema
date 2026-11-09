@@ -1,11 +1,5 @@
 import type { Schema } from "wordgard/doc";
-import {
-	Blockquote,
-	Doc,
-	Heading,
-	LineBreak,
-	Paragraph,
-} from "./common.ts";
+import { Blockquote, Doc, Heading, LineBreak, Paragraph } from "./common.ts";
 import {
 	Alignment,
 	BackgroundColor,
@@ -34,6 +28,40 @@ import {
 	TableRow,
 	Underline,
 } from "wordgard/types";
+
+export {
+	Blockquote,
+	Doc,
+	Heading,
+	LineBreak,
+	Paragraph,
+	Alignment,
+	BackgroundColor,
+	BulletList,
+	CaptionedFigure,
+	Cell,
+	Color,
+	ColSpan,
+	Direction,
+	Emphasis,
+	Figure,
+	HeaderCell,
+	HorizontalRule,
+	Image,
+	ImageAlt,
+	ImageSize,
+	Link,
+	ListItem,
+	OrderedList,
+	RowSpan,
+	Strikethrough,
+	Strong,
+	Subscript,
+	Superscript,
+	Table,
+	TableRow,
+	Underline,
+};
 
 export const schema: Schema.Element[] = [
 	Doc,

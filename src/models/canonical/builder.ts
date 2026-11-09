@@ -32,6 +32,7 @@ export class Builder {
 	doc: Plot.Doc;
 	stack: Plot[] = [];
 	lastInsert: Node;
+	activeMarks: Mark.Set = [];
 
 	constructor(config: GardState.Extension, meta: Meta) {
 		const resolved = GardState.Configuration.create(config);
@@ -89,7 +90,9 @@ export class Builder {
 			}
 
 			const parent = this.parent;
-			const insert = (typeof t == "string" ? Leaf.text(t) : t) as Node;
+			const insert = (
+				(typeof t == "string" ? Leaf.text(t) : t) as Node
+			).withMarks(this.activeMarks);
 
 			// workaround WordGard.Node.create(content = [])
 			if (parent.content.length == 0) (parent.content as Node[]) = [];
@@ -142,10 +145,16 @@ export class Builder {
 			if (!n.isText && !n.type.hasRole(Node.Role.LineBreak)) res += "\n";
 
 			if (n.param) res += JSON.stringify(n.param);
-			if (n.marks.length) {
-				res += `[${n.marks.map((m) => m.name).join(",")}]`;
-			}
+			if (n.marks.length) res += `[${n.marks.map((m) => m.name).join(",")}]`;
 		}
 		return res;
+	}
+
+	activate(mark: Mark) {
+		this.activeMarks = mark.addToSet(this.activeMarks);
+	}
+
+	deactivate(mark: Mark) {
+		this.activeMarks = mark.removeFromSet(this.activeMarks);
 	}
 }

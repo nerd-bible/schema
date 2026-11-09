@@ -1,13 +1,16 @@
 import * as z from "zod";
 
-export const SourceMap = z.array(
-	z.xor([
-		z.int(), // skip
-		z
-			.array(z.int())
-			.min(3) // fromLength, toStart, toLength, [toStart, toLength]...
-			.refine((arr) => arr.length % 2 == 1, {
-				message: "array must contain odd number of elements",
-			}), // fromLength, toStart, toEnd
-	]),
-);
+export const SourceMap = z.object({
+	fromId: z.string(),
+	fromObjectHash: z.string().optional(),
+	fromPos: z.array(z.int()),
+	fromLen: z.array(z.int()),
+	toId: z.string(),
+	toObjectHash: z.string().optional(),
+	toPos: z.array(z.int()),
+	toLen: z.array(z.int()),
+}).refine(({ fromPos, fromLen, toPos, toLen }) => {
+	if (fromPos.length != fromLen.length) return { error: "invalid sourcemap fromLen length" };
+	if (fromPos.length != toPos.length) return { error: "invalid sourcemap toPos length" };
+	if (fromPos.length != toLen.length) return { error: "invalid sourcemap toLen length" };
+});
