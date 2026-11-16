@@ -1,4 +1,5 @@
-export * as book from "./book.ts";
-export * as note from "./note.ts";
-export * as meta from "./meta.ts";
+export * as richText from "./richText.ts";
+export * from "./doc.ts";
 export * from "./builder.ts";
+
+export * as types from "./types/index.ts";

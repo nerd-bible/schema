@@ -1,38 +1,51 @@
 import { GardState } from "wordgard/state";
-import type { Meta } from "./meta.ts";
-import * as z from "zod";
-import type { SourceMap } from "./sourceMap";
-import { Leaf, Mark, Plot, Node } from "wordgard/doc";
-import type { Token as WgToken } from "wordgard/doc";
+import { Leaf, Mark, Plot, Node, Token, ChangeSet } from "wordgard/doc";
+import type { Meta, RichText } from "./richText.ts";
 
-export type Doc = {
-	type: "doc";
-	schema: number;
-	meta: Meta;
-	doc: Node.JSON;
-};
-export type SourceMap = {
-	type: "sourcemap";
-	source: Meta["id"];
-	target: Meta["id"];
-	map: z.infer<typeof SourceMap>;
+function tokenToNode(t: Exclude<Token, typeof Plot.End> | string): Node {
+	if (typeof t === "string") return Leaf.text(t, []);
+	if (t.tokenType == Token.Type.Open) return t.create([]);
+	return t;
+}
+
+type Mutable<Type> = {
+	-readonly [Key in keyof Type]: Type[Key];
 };
 
-// We could allow Plot.Tag if we created a Node for them, but be lazy for now.
-type Token = Exclude<WgToken, Plot.Tag>;
+interface Change extends Omit<ChangeSet.Change, "insert"> {
+	insert: (Node | typeof Plot.End)[];
+}
 
+interface MutableJson extends Node.JSON {
+	content: MutableJson[];
+}
+
+type ModificationJSON =
+	| {
+			add: string;
+			value: any;
+	  }
+	| {
+			remove: string;
+			value: any;
+	  };
+type MutableChangeSetJson =
+	| number
+	| [number, (MutableJson | ".")[] | ModificationJSON[]];
+
+/// Build a `Plot.Doc` by pushing to it.
 export class Builder {
 	meta: Meta;
-	xrefs: Record<string, Builder> = {};
-	xrefsMap: Record<string, z.infer<typeof SourceMap>> = {};
-	// I originally used `GardState`, but each `.update` fully validates the
-	// entire document, which is slow.
-	// Instead we'll directly mutate a document (working around the `readonly`
-	// types) and validate it once at the end.
+
+	// https://code.haverbeke.berlin/wordgard/wordgard/issues/119
+	// I originally used `GardState`, but its immutable API was 30x slower due to
+	// array copying and GC
 	doc: Plot.Doc;
 	stack: Plot[] = [];
 	lastInsert: Node;
 	activeMarks: Mark.Set = [];
+
+	layers: Record<string, Change[]> = {};
 
 	constructor(config: GardState.Extension, meta: Meta) {
 		const resolved = GardState.Configuration.create(config);
@@ -40,49 +53,30 @@ export class Builder {
 		this.meta = meta;
 	}
 
-	finish(validate = true): (Doc | SourceMap)[] {
+	finish(validate = true): RichText {
 		if (validate) this.doc.schema.validate(this.doc);
 
-		for (const a of Object.values(this.xrefs)) {
-			const annotates = (a.meta.xrefs ??= []);
-			annotates.push(this.meta.id);
-		}
-
-		const res: ReturnType<typeof this.finish> = [];
-		const finished: Doc = {
+		return {
 			type: "doc",
 			schema: 1,
 			meta: this.meta,
-			doc: this.doc.toJSON(),
+			content: this.doc.toJSON() as MutableJson,
+			layers: Object.entries(this.layers).map(([k, v]) => ({
+				name: k,
+				style: {},
+				changeset: v.map(
+					(c) => ChangeSet.create(this.doc, c).toJSON() as MutableChangeSetJson,
+				),
+			})),
 		};
-		for (const s in this.xrefs) {
-			const xref = this.xrefs[s];
-			const source = this.xrefsMap[s];
-			if (source) {
-				finished.meta.sources ??= [];
-				finished.meta.sources.push(xref.meta.id);
-				res.push({
-					type: "sourcemap",
-					source: xref.meta.id,
-					target: this.meta.id,
-					map: source,
-				});
-			} else {
-				finished.meta.xrefs ??= [];
-				finished.meta.xrefs.push(xref.meta.id);
-				res.push(...xref.finish());
-			}
-		}
-		res.push(finished);
-
-		return res;
 	}
 
 	get parent() {
 		return this.stack.at(-1) ?? this.doc;
 	}
 
-	insert(...tokens: (Token | string)[]) {
+	push(...tokens: (Token | string)[]): number {
+		const start = this.cursor;
 		for (const t of tokens) {
 			if (t == Plot.End) {
 				this.stack.pop();
@@ -90,30 +84,59 @@ export class Builder {
 			}
 
 			const parent = this.parent;
-			const insert = (
-				(typeof t == "string" ? Leaf.text(t) : t) as Node
-			).withMarks(this.activeMarks);
+			const node = tokenToNode(t as Exclude<Token, typeof Plot.End>).withMarks(
+				this.activeMarks,
+			);
 
 			// workaround WordGard.Node.create(content = [])
 			if (parent.content.length == 0) (parent.content as Node[]) = [];
 
-			// optimize text concatenation
 			if (
 				this.lastInsert.isText &&
-				insert.isText &&
-				Mark.sameSet(this.lastInsert.marks, insert.marks)
+				node.isText &&
+				Mark.sameSet(this.lastInsert.marks, node.marks)
 			) {
-				(this.lastInsert as any).param += insert.param;
+				// optimize text concatenation
+				(this.lastInsert as Mutable<Leaf<string>>).param += node.param;
 			} else {
-				(parent.content as Node[]).push(insert);
-				this.lastInsert = insert;
+				(parent.content as Node[]).push(node);
+				this.lastInsert = node;
 			}
 
 			// update contentLength ourselves
-			for (const s of this.stack) s.contentLength += insert.length;
-			this.doc.contentLength += insert.length;
+			for (const s of this.stack) s.contentLength += node.length;
+			this.doc.contentLength += node.length;
 
-			if (insert.isPlot) this.stack.push(insert);
+			if (node.isPlot) this.stack.push(node);
+		}
+		return this.cursor - start;
+	}
+
+	pushLayer(name: string, ...tokens: (Token | string)[]) {
+		const layer = (this.layers[name] ??= []);
+		const start = this.cursor;
+		if (tokens[0] == Plot.End && !this.stack.length) tokens = tokens.slice(1);
+
+		for (const t of tokens) {
+			const last = layer.at(-1);
+			const lastInsert = last?.insert?.at(-1);
+
+			const insert =
+				t == Plot.End ? t : tokenToNode(t as Exclude<Token, typeof Plot.End>);
+			if (
+				lastInsert?.tokenType == Token.Type.Node &&
+				lastInsert?.isText &&
+				insert?.tokenType == Token.Type.Node &&
+				insert?.isText
+			) {
+				// optimize text concatenation
+				(this.lastInsert as Mutable<Leaf<string>>).param += insert.param;
+			} else if (last?.from == start) {
+				// optimize same start
+				last.insert.push(insert ?? Plot.End);
+			} else {
+				layer.push({ from: start, insert: [insert] });
+			}
 		}
 	}
 
@@ -129,8 +152,8 @@ export class Builder {
 		return this.doc.schema;
 	}
 
-	isInsertValid(n: Node) {
-		return this.schema.canContain(this.parent.type, n.type);
+	isInsertValid(n: Node.Type) {
+		return this.schema.canContain(this.parent.type, n);
 	}
 
 	toString(n: Node = this.doc, depth = 0) {

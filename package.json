@@ -27,7 +27,7 @@
 	},
 	"devDependencies": {
 		"@nerd-bible/config": "^0.3.0",
-		"wordgard": "npm:@nerd-bible/wordgard@^0.6.2-beta3"
+		"wordgard": "^0.7.0"
 	},
 	"peerDependencies": {
 		"wordgard": "*"
