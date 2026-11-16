@@ -1,7 +1,7 @@
 // TODO: nice binary format that supports partial loading, better compression,
 // and indexing
 import * as z from "zod";
-import { richText, annotation } from "./richText.ts";
+import { richText } from "./richText.ts";
 
 export const sourceMap = z
 	.strictObject({
@@ -26,9 +26,5 @@ export const sourceMap = z
 	});
 export type SourceMap = z.output<typeof sourceMap>;
 
-export const doc = z.discriminatedUnion("type", [
-	richText,
-	sourceMap,
-	annotation,
-]);
+export const doc = z.discriminatedUnion("type", [richText, sourceMap]);
 export type Doc = z.output<typeof doc>;

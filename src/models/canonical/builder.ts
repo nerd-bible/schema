@@ -16,8 +16,8 @@ interface Change extends Omit<ChangeSet.Change, "insert"> {
 	insert: (Node | typeof Plot.End)[];
 }
 
-interface MutableJson extends Node.JSON {
-	content: MutableJson[];
+export interface MutableJson extends Node.JSON {
+	content?: MutableJson[];
 }
 
 type ModificationJSON =
@@ -57,7 +57,7 @@ export class Builder {
 		if (validate) this.doc.schema.validate(this.doc);
 
 		return {
-			type: "doc",
+			type: "richText",
 			schema: 1,
 			meta: this.meta,
 			content: this.doc.toJSON() as MutableJson,

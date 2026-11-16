@@ -1,4 +1,4 @@
-import { Plot, Node, Leaf } from "wordgard/doc";
+import { Plot, Node, Leaf, Mark } from "wordgard/doc";
 import { Heading as WgHeading } from "wordgard/types";
 export {
 	Alignment,
@@ -25,6 +25,7 @@ export {
 	TableRow,
 	Underline,
 } from "wordgard/types";
+import type { MutableJson } from "../builder.ts";
 
 export const Doc = Plot.defineDoc({
 	blockContent: Node.Group.Content,
@@ -85,11 +86,7 @@ export const List = Plot.define("List", {
 		element: "div",
 		attributes: { role: "list" },
 	},
-	parseRules: [
-		{ selector: "ul" },
-		{ selector: "ol" },
-		{ selector: "menu" },
-	],
+	parseRules: [{ selector: "ul" }, { selector: "ol" }, { selector: "menu" }],
 });
 
 export const InlineList = Plot.define("InlineList", {
@@ -118,3 +115,25 @@ export const InlineList = Plot.define("InlineList", {
 //   shape: {element: "span"},
 //   inlineContent: true
 // });
+
+type Anno = {
+	tags: string[];
+	note: MutableJson;
+};
+export const NoteMark = Mark.Type.define<Anno>("NoteMark", {
+	rank: 91,
+	shape: {
+		element: "span",
+		attributes: (a) => ({ class: ["notemark"].concat(a.tags).join(" ") }),
+	},
+	parseRules: [{ selector: "span.notemark" }],
+});
+
+export const NoteAtom = Leaf.Type.define<Anno>("NoteAtom", {
+	shape: {
+		element: "span",
+		attributes: (a) => ({ class: ["noteatom"].concat(a.tags).join(" ") }),
+		atom: true,
+	},
+	parseRules: [{ selector: "span.noteatom" }],
+});

@@ -1,5 +1,4 @@
-import { Plot, Leaf } from "wordgard/doc";
-import { Mark, ValidationError } from "wordgard/doc";
+import { Plot, Leaf, Mark, ValidationError } from "wordgard/doc";
 
 export * from "./base.ts";
 

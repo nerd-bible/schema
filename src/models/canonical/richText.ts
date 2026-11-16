@@ -24,7 +24,7 @@ const wgNode = z.strictObject({
 	type: z.string(),
 	param: z.any().optional(),
 	marks: z.looseRecord(z.string(), z.any()).optional(),
-	get content() {
+	get content(): z.ZodOptional<z.ZodArray<typeof wgNode>> {
 		return wgNode.array().optional();
 	},
 });
@@ -48,25 +48,10 @@ export const layer = z.strictObject({
 export type Layer = z.output<typeof layer>;
 
 export const richText = z.strictObject({
-	type: z.literal("doc"),
+	type: z.literal("richText"),
 	schema: z.literal(1),
 	meta,
 	content: wgNode,
 	layers: layer.array(),
 });
 export type RichText = z.output<typeof richText>;
-
-export const annotation = z.strictObject({
-	type: z.literal("annotation"),
-	schema: z.literal(1),
-	meta,
-	on: id,
-	annotations: z
-		.strictObject({
-			pos: z.number(),
-			length: z.number(),
-			content: wgNode,
-		})
-		.array(),
-});
-export type Annotation = z.output<typeof annotation>;
