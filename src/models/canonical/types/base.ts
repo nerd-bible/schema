@@ -25,11 +25,9 @@ export {
 	TableRow,
 	Underline,
 } from "wordgard/types";
-import type { MutableJson } from "../builder.ts";
 
 export const Doc = Plot.defineDoc({
 	blockContent: Node.Group.Content,
-	canBeEmpty: true,
 });
 
 export const Paragraph = Plot.Type.define<string>("Paragraph", {
@@ -118,22 +116,22 @@ export const InlineList = Plot.define("InlineList", {
 
 type Anno = {
 	tags: string[];
-	note: MutableJson;
+	note: Node.JSON;
 };
 export const NoteMark = Mark.Type.define<Anno>("NoteMark", {
 	rank: 91,
 	shape: {
 		element: "span",
-		attributes: (a) => ({ class: ["notemark"].concat(a.tags).join(" ") }),
+		attributes: (a) => ({ class: ["note-mark"].concat(a.tags).join(" ") }),
 	},
-	parseRules: [{ selector: "span.notemark" }],
+	parseRules: [{ selector: "span.note-mark" }],
 });
 
 export const NoteAtom = Leaf.Type.define<Anno>("NoteAtom", {
 	shape: {
 		element: "span",
-		attributes: (a) => ({ class: ["noteatom"].concat(a.tags).join(" ") }),
+		attributes: (a) => ({ class: ["note-atom"].concat(a.tags).join(" ") }),
 		atom: true,
 	},
-	parseRules: [{ selector: "span.noteatom" }],
+	parseRules: [{ selector: "span.note-atom" }],
 });

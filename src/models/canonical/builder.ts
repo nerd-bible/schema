@@ -1,5 +1,4 @@
-import { GardState } from "wordgard/state";
-import { Leaf, Mark, Plot, Node, Token, ChangeSet } from "wordgard/doc";
+import { Leaf, Mark, Plot, Node, Token, ChangeSet, Schema } from "wordgard/doc";
 import type { Meta, RichText } from "./richText.ts";
 
 function tokenToNode(t: Exclude<Token, typeof Plot.End> | string): Node {
@@ -16,80 +15,43 @@ interface Change extends Omit<ChangeSet.Change, "insert"> {
 	insert: (Node | typeof Plot.End)[];
 }
 
-export interface MutableJson extends Node.JSON {
-	content?: MutableJson[];
-}
-
-type ModificationJSON =
-	| {
-			add: string;
-			value: any;
-	  }
-	| {
-			remove: string;
-			value: any;
-	  };
-type MutableChangeSetJson =
-	| number
-	| [number, (MutableJson | ".")[] | ModificationJSON[]];
-
-/// Build a `Plot.Doc` by pushing to it.
-export class Builder {
-	meta: Meta;
-
+abstract class BuilderBase {
 	// https://code.haverbeke.berlin/wordgard/wordgard/issues/119
 	// I originally used `GardState`, but its immutable API was 30x slower due to
 	// array copying and GC
-	doc: Plot.Doc;
+	schema: Schema;
 	stack: Plot[] = [];
 	lastInsert: Node;
 	activeMarks: Mark.Set = [];
 
-	layers: Record<string, Change[]> = {};
+	constructor(schema: Schema) {
+		this.schema = schema;
 
-	constructor(config: GardState.Extension, meta: Meta) {
-		const resolved = GardState.Configuration.create(config);
-		this.doc = this.lastInsert = resolved.schema!.doc([]);
-		this.meta = meta;
+		if (schema.docTag.type.canBeEmpty) {
+			this.lastInsert = schema.doc([]);
+		} else {
+			const defaultContent = schema.createAndFill(
+				schema.defaultContentTag(schema.docTag.type)!,
+			);
+			if (defaultContent.isPlot) this.stack.push(defaultContent);
+			this.lastInsert = schema.doc([defaultContent]);
+		}
 	}
 
-	finish(validate = true): RichText {
-		if (validate) this.doc.schema.validate(this.doc);
-
-		return {
-			type: "richText",
-			schema: 1,
-			meta: this.meta,
-			content: this.doc.toJSON() as MutableJson,
-			layers: Object.entries(this.layers).map(([k, v]) => ({
-				name: k,
-				style: {},
-				changeset: v.map(
-					(c) => ChangeSet.create(this.doc, c).toJSON() as MutableChangeSetJson,
-				),
-			})),
-		};
-	}
-
-	get parent() {
-		return this.stack.at(-1) ?? this.doc;
-	}
+	abstract pushNode(n: Node): void;
 
 	push(...tokens: (Token | string)[]): number {
-		const start = this.cursor;
+		let res = 0;
+
 		for (const t of tokens) {
 			if (t == Plot.End) {
 				this.stack.pop();
 				continue;
 			}
 
-			const parent = this.parent;
 			const node = tokenToNode(t as Exclude<Token, typeof Plot.End>).withMarks(
 				this.activeMarks,
 			);
-
-			// workaround WordGard.Node.create(content = [])
-			if (parent.content.length == 0) (parent.content as Node[]) = [];
 
 			if (
 				this.lastInsert.isText &&
@@ -99,61 +61,62 @@ export class Builder {
 				// optimize text concatenation
 				(this.lastInsert as Mutable<Leaf<string>>).param += node.param;
 			} else {
-				(parent.content as Node[]).push(node);
+				this.pushNode(node);
 				this.lastInsert = node;
 			}
 
 			// update contentLength ourselves
 			for (const s of this.stack) s.contentLength += node.length;
-			this.doc.contentLength += node.length;
+			res += node.length;
 
 			if (node.isPlot) this.stack.push(node);
 		}
-		return this.cursor - start;
+		return res;
 	}
 
-	pushLayer(name: string, ...tokens: (Token | string)[]) {
-		const layer = (this.layers[name] ??= []);
-		const start = this.cursor;
-		if (tokens[0] == Plot.End && !this.stack.length) tokens = tokens.slice(1);
+	activate(mark: Mark) {
+		this.activeMarks = mark.addToSet(this.activeMarks);
+	}
 
-		for (const t of tokens) {
-			const last = layer.at(-1);
-			const lastInsert = last?.insert?.at(-1);
+	deactivate(mark: Mark) {
+		this.activeMarks = mark.removeFromSet(this.activeMarks);
+	}
+}
 
-			const insert =
-				t == Plot.End ? t : tokenToNode(t as Exclude<Token, typeof Plot.End>);
-			if (
-				lastInsert?.tokenType == Token.Type.Node &&
-				lastInsert?.isText &&
-				insert?.tokenType == Token.Type.Node &&
-				insert?.isText
-			) {
-				// optimize text concatenation
-				(this.lastInsert as Mutable<Leaf<string>>).param += insert.param;
-			} else if (last?.from == start) {
-				// optimize same start
-				last.insert.push(insert ?? Plot.End);
-			} else {
-				layer.push({ from: start, insert: [insert] });
-			}
-		}
+/// Build a `Plot.Doc` by pushing to it.
+export class Builder<Layer extends string> extends BuilderBase {
+	doc: Plot.Doc;
+	meta: Meta;
+	layers: { [L in Layer]: LayerBuilder };
+
+	constructor(schema: Schema, meta: Meta, layers: readonly Layer[] = []) {
+		super(schema);
+		this.doc = this.lastInsert as Plot.Doc;
+		this.meta = meta;
+		this.layers = {} as any;
+		for (const l of layers)
+			this.layers[l] = new LayerBuilder(this.doc.schema, this);
+	}
+
+	pushNode(n: Node) {
+		const parent = this.stack.at(-1) ?? this.doc;
+		// workaround WordGard.Node.create(content = [])
+		if (parent.content.length == 0) (parent.content as Node[]) = [];
+		(parent.content as Node[]).push(n);
+	}
+
+	push(...tokens: (Token | string)[]): number {
+		const res = super.push(...tokens);
+		this.doc.contentLength += res;
+		return res;
 	}
 
 	isEmpty() {
 		return this.doc.length <= 2;
 	}
 
-	get cursor() {
+	get pos() {
 		return this.doc.length - this.stack.length;
-	}
-
-	get schema() {
-		return this.doc.schema;
-	}
-
-	isInsertValid(n: Node.Type) {
-		return this.schema.canContain(this.parent.type, n);
 	}
 
 	toString(n: Node = this.doc, depth = 0) {
@@ -173,11 +136,61 @@ export class Builder {
 		return res;
 	}
 
-	activate(mark: Mark) {
-		this.activeMarks = mark.addToSet(this.activeMarks);
+	finish(validate = true): RichText {
+		if (validate) this.doc.schema.validate(this.doc);
+
+		return {
+			type: "richText",
+			schema: 1,
+			meta: this.meta,
+			content: this.doc.toJSON() as RichText["content"],
+			layers: (Object.keys(this.layers) as Layer[]).reduce(
+				(acc, k) => {
+					acc[k] = this.layers[k].finish(this.doc);
+					return acc;
+				},
+				{} as RichText["layers"],
+			),
+		};
+	}
+}
+
+type Layer = RichText["layers"][string];
+
+export class LayerBuilder extends BuilderBase {
+	changes: Change[] = [];
+	provider: { get pos(): number };
+	lastPos: number;
+
+	constructor(schema: Schema, provider: { get pos(): number }) {
+		super(schema);
+		this.provider = provider;
+		this.lastPos = provider.pos;
 	}
 
-	deactivate(mark: Mark) {
-		this.activeMarks = mark.removeFromSet(this.activeMarks);
+	get pos() {
+		return this.provider.pos;
+	}
+
+	pushNode(n: Node) {
+		const from = n.isBlock && this.pos == 1 ? 0 : this.pos;
+		this.changes.push({ from, insert: [n] });
+	}
+
+	push(...tokens: (Token | string)[]): number {
+		let { pos, lastPos } = this;
+		if (pos > lastPos + 1) this.stack = [];
+		const res = super.push(...tokens);
+		this.lastPos = pos + res;
+
+		return res;
+	}
+
+	finish(d: Plot.Doc, validate = true): Layer {
+		console.log("finish", d.length, this.changes);
+		let changeset = ChangeSet.create(d, this.changes);
+		if (validate) changeset = changeset.correct(d);
+
+		return changeset.toJSON() as Layer;
 	}
 }

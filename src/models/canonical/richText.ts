@@ -40,18 +40,11 @@ const wgChangeSet = z
 	])
 	.array();
 
-export const layer = z.strictObject({
-	name: z.string(),
-	style: z.looseRecord(z.string(), z.string()),
-	changeset: wgChangeSet,
-});
-export type Layer = z.output<typeof layer>;
-
 export const richText = z.strictObject({
 	type: z.literal("richText"),
 	schema: z.literal(1),
 	meta,
 	content: wgNode,
-	layers: layer.array(),
+	layers: z.looseRecord(z.string(), wgChangeSet),
 });
 export type RichText = z.output<typeof richText>;
