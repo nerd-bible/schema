@@ -12,7 +12,7 @@ type Mutable<Type> = {
 };
 
 interface Change extends Omit<ChangeSet.Change, "insert"> {
-	insert: (Node | typeof Plot.End)[];
+	insert: (Node | Plot.Tag)[];
 }
 
 abstract class BuilderBase {
@@ -92,6 +92,8 @@ export class Builder<Layer extends string> extends BuilderBase {
 	constructor(schema: Schema, meta: Meta, layers: readonly Layer[] = []) {
 		super(schema);
 		this.doc = this.lastInsert as Plot.Doc;
+		const lastContent = this.doc.content.at(-1);
+		if (lastContent) this.lastInsert = lastContent;
 		this.meta = meta;
 		this.layers = {} as any;
 		for (const l of layers)
@@ -139,18 +141,21 @@ export class Builder<Layer extends string> extends BuilderBase {
 	finish(validate = true): RichText {
 		if (validate) this.doc.schema.validate(this.doc);
 
+		const content = this.doc.toJSON() as RichText["content"];
+		const layers = (Object.keys(this.layers) as Layer[]).reduce(
+			(acc, k) => {
+				acc[k] = this.layers[k].finish(this.doc);
+				return acc;
+			},
+			{} as RichText["layers"],
+		);
+
 		return {
 			type: "richText",
 			schema: 1,
 			meta: this.meta,
-			content: this.doc.toJSON() as RichText["content"],
-			layers: (Object.keys(this.layers) as Layer[]).reduce(
-				(acc, k) => {
-					acc[k] = this.layers[k].finish(this.doc);
-					return acc;
-				},
-				{} as RichText["layers"],
-			),
+			content,
+			layers,
 		};
 	}
 }
@@ -174,7 +179,12 @@ export class LayerBuilder extends BuilderBase {
 
 	pushNode(n: Node) {
 		const from = n.isBlock && this.pos == 1 ? 0 : this.pos;
-		this.changes.push({ from, insert: [n] });
+		let insert: (Node | Plot.Tag)[] = [n];
+		// This makes WordGard move the content from the existing plot instead of
+		// make a new empty one.
+		// TODO: make an API where the user knows the difference
+		if (n.isPlot && n.content.length == 0) insert = [n.tag];
+		this.changes.push({ from, insert });
 	}
 
 	push(...tokens: (Token | string)[]): number {
@@ -186,8 +196,7 @@ export class LayerBuilder extends BuilderBase {
 		return res;
 	}
 
-	finish(d: Plot.Doc, validate = true): Layer {
-		console.log("finish", d.length, this.changes);
+	finish(d: Plot.Doc, validate = false): Layer {
 		let changeset = ChangeSet.create(d, this.changes);
 		if (validate) changeset = changeset.correct(d);
 

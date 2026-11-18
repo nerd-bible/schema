@@ -38,8 +38,8 @@ export const Paragraph = Plot.Type.define<string>("Paragraph", {
 	shape: {
 		element: "p",
 		attributes: (claz) => ({ ...(claz ? { class: claz } : {}) }),
+		readElement: e => e.className,
 	},
-	parseRules: [{ selector: "p", readElement: (ele) => ele.className }],
 });
 
 export const Heading = Plot.Type.define("Heading", {
@@ -114,11 +114,11 @@ export const InlineList = Plot.define("InlineList", {
 //   inlineContent: true
 // });
 
-type Anno = {
+export type Note = {
 	tags: string[];
 	note: Node.JSON;
 };
-export const NoteMark = Mark.Type.define<Anno>("NoteMark", {
+export const NoteMark = Mark.Type.define<Note>("NoteMark", {
 	rank: 91,
 	shape: {
 		element: "span",
@@ -127,11 +127,12 @@ export const NoteMark = Mark.Type.define<Anno>("NoteMark", {
 	parseRules: [{ selector: "span.note-mark" }],
 });
 
-export const NoteAtom = Leaf.Type.define<Anno>("NoteAtom", {
+export const NoteAtom = Leaf.Type.define<Note>("NoteAtom", {
+	inline: true,
 	shape: {
 		element: "span",
 		attributes: (a) => ({ class: ["note-atom"].concat(a.tags).join(" ") }),
-		atom: true,
 	},
 	parseRules: [{ selector: "span.note-atom" }],
+	selectable: true,
 });

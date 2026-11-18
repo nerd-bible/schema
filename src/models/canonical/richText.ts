@@ -1,3 +1,4 @@
+import type { ChangeSet } from "wordgard/doc";
 import * as z from "zod";
 
 export const id = z.uuidv4();
@@ -28,6 +29,7 @@ const wgNode = z.strictObject({
 		return wgNode.array().optional();
 	},
 });
+export type WgNode = z.output<typeof wgNode>;
 const wgToken = z.union([wgNode, z.literal(".")]);
 const wgModification = z.union([
 	z.strictObject({ value: z.any(), add: z.string() }),
@@ -39,6 +41,7 @@ const wgChangeSet = z
 		z.tuple([z.number(), z.union([wgToken.array(), wgModification.array()])]),
 	])
 	.array();
+export type WgChangeSet = z.output<typeof wgChangeSet>;
 
 export const richText = z.strictObject({
 	type: z.literal("richText"),
